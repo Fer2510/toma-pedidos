@@ -14,13 +14,20 @@ st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wid
 st.markdown(
     """
     <style>
-    /* Ocultar el botón flotante de Manage app y la barra superior */
+    /* Ocultar barra superior, menú, pie de página y botones flotantes de Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    .stApp > header {display: none;}
+    [data-testid="stToolbar"] {visibility: hidden; display: none;}
+    [data-testid="stDecoration"] {display: none;}
+    [data-testid="stStatusWidget"] {visibility: hidden;}
+    div[class*="viewerBadge"] {display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
     </style>
     """,
     unsafe_allow_html=True
+)
 )
 st.title("🛒 Sistema de Toma de Pedidos")
 st.markdown("Ingrese el mercado y complete las cantidades para cada producto.")
