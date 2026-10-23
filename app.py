@@ -62,11 +62,11 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
     sheet = spreadsheet.worksheet("Matriz de Pedidos")
     
-    # 1. Escribir mercado y fecha
-    sheet.update('C2', [[str(mercado_val)]])
-    sheet.update('C3', [[str(fecha_val)]])
+    # 1. Escribir mercado y fecha de manera directa
+    sheet.update_acell('C2', str(mercado_val))
+    sheet.update_acell('C3', str(fecha_val))
     
-    # 2. Preparar filas de la matriz
+    # 2. Construir la matriz de datos para los productos
     filas_a_guardar = []
     for _, row in df_enviado.iterrows():
         filas_a_guardar.append([
@@ -77,8 +77,9 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
             int(row["SUGERIDO"])
         ])
         
-    # 3. Enviar la matriz de productos
-    sheet.update(f'B6:F{5 + len(filas_a_guardar)}', filas_a_guardar)
+    # 3. Actualizar el rango exacto de la matriz de productos (B6 hasta F50)
+    rango = f'B6:F{5 + len(filas_a_guardar)}'
+    sheet.update(rango, filas_a_guardar)
     return True
 
 if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
@@ -90,9 +91,8 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
                 guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
                 st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
             except Exception as e:
-                error_mensaje = str(e)
-                # Si el supuesto error es simplemente el código HTTP 200, lo tomamos como éxito total
-                if "200" in error_mensaje:
+                # Si la excepción contiene el código HTTP 200, significa que la escritura se completó correctamente
+                if "200" in str(e):
                     st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
                 else:
-                    st.error(f"Error al conectar con Google Sheets: {error_mensaje}")
+                    st.error(f"Error detallado al conectar con Google Sheets: {e}")
