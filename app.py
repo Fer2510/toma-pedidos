@@ -4,20 +4,17 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Configuración de la página
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
 st.title("🛒 Sistema de Toma de Pedidos")
 st.markdown("Ingrese el mercado y complete las cantidades para cada producto.")
 
-# Datos del encabezado
 col1, col2 = st.columns(2)
 with col1:
     mercado = st.text_input("MERCADO / ZONA:", placeholder="Ej. Mercado Central / Cliente X")
 with col2:
     fecha_pedido = st.date_input("FECHA:", value=datetime.now())
 
-# Lista completa de los 45 productos
 productos = [
     "ALIÑO PICADO 150 g.", "AJI 200 g.", "ACELGAS 200 g.", "AJO PORRO 300 g.", "ALBAHACA 50 g.",
     "COMPUESTO CEBOLLIN Y CILANTRO 150 g.", "CILANTRO 40 g.", "CEBOLLIN 150 g.", "ESPINACA 200 g.", "HIERBABUENA 50 g.",
@@ -52,7 +49,7 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función de guardado con búsqueda automática de celdas
+# Función de diagnóstico para ver el error exacto si ocurre
 def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     try:
         scopes = [
@@ -67,56 +64,33 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
         sheet = spreadsheet.worksheet("Matriz de Pedidos")
         
-        # Buscar dinámicamente dónde está la celda "MERCADO:" o actualizar C2 por defecto
-        try:
-            cell_mercado = sheet.find("MERCADO:")
-            sheet.update_cell(cell_mercado.row, cell_mercado.col + 1, str(mercado_val))
-        except:
-            sheet.update_acell('C2', str(mercado_val))
-            
-        try:
-            cell_fecha = sheet.find("FECHA:")
-            sheet.update_cell(cell_fecha.row, cell_fecha.col + 1, str(fecha_val))
-        except:
-            sheet.update_acell('C3', str(fecha_val))
+        # Intentar escribir mercado y fecha directamente
+        sheet.update('C2', [[str(mercado_val)]])
+        sheet.update('C3', [[str(fecha_val)]])
         
-        # Buscar dónde dice "PRODUCTO" para empezar a rellenar justo debajo
-        try:
-            cell_prod = sheet.find("PRODUCTO")
-            fila_inicio = cell_prod.row + 1
-            col_letra = gspread.utils.rowcol_to_a1(1, cell_prod.col)[0] # Columna donde dice producto (ej. B)
-        except:
-            fila_inicio = 6
-            col_letra = 'B'
-        
-        # Escribir producto por producto haciendo coincidir el nombre exacto de la lista
+        # Construir y enviar la matriz completa de un solo golpe (más rápido y limpio)
+        filas_a_guardar = []
         for index, row in df_enviado.iterrows():
-            fila_actual = fila_inicio + index
-            valores_fila = [
+            filas_a_guardar.append([
                 str(row["PRODUCTO"]), 
                 int(row["EXISTENCIA"]), 
                 int(row["CAMBIOS"]), 
                 int(row["PEDIDO"]), 
                 int(row["SUGERIDO"])
-            ]
-            # Rango dinámico desde la columna del producto hasta 4 columnas a la derecha (Existencia, Cambios, Pedido, Sugerido)
-            sheet.update(f'{col_letra}{fila_actual}:F{fila_actual}', [valores_fila])
+            ])
             
-        return True
+        sheet.update(f'B6:F{5 + len(filas_a_guardar)}', filas_a_guardar)
+        return True, "OK"
     except Exception as e:
-        error_str = str(e)
-        if "Response [200]" in error_str:
-            return True
-        else:
-            st.error(f"Error al conectar con Google Sheets: {e}")
-            return False
+        return False, str(e)
 
-# Botón para enviar pedido
 if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Enviando pedido a la nube..."):
-            exito = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
+        with st.spinner("Conectando con Google Sheets..."):
+            exito, mensaje = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
             if exito:
-                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo de la oficina principal!")
+                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
+            else:
+                st.error(f"Error al guardar: {mensaje}")
