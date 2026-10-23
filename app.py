@@ -118,12 +118,11 @@ def generar_pdf(df_enviado, mercado_val, fecha_val):
     buffer.seek(0)
     return buffer
 
-# Función para subir el PDF automáticamente a tu carpeta de Google Drive
+# Función mejorada con captura exacta de error para Drive
 def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds):
     try:
         drive_service = build('drive', 'v3', credentials=creds)
         
-        # ID de tu carpeta de Google Drive configurado
         ID_CARPETA_DESTINO = "162rUBUDTFb04W4GJR-dDdX5-6M8w62jJ" 
         
         file_metadata = {
@@ -140,9 +139,9 @@ def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds):
             fields='id, webViewLink'
         ).execute()
         
-        return file.get('webViewLink')
+        return file.get('webViewLink'), None
     except Exception as e:
-        return None
+        return None, str(e)
 
 if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primary"):
     if not mercado:
@@ -176,18 +175,18 @@ if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primar
                         int(row["SUGERIDO"])
                     ]])
                 
-                # 2. Generar y subir el PDF automáticamente a Google Drive
+# 2. Generar y subir el PDF automáticamente a Google Drive
                 pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
                 nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                 
-                link_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds)
+                link_drive, error_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds)
                 
-                st.success(f"¡Pedido para **{mercado}** procesado con éxito!")
+                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
                 
                 if link_drive:
                     st.markdown(f"📄 **PDF guardado en Google Drive correctamente.** [Ver documento en Drive]({link_drive})")
                 else:
-                    st.warning("El pedido se guardó en la hoja, pero hubo un detalle al subir el PDF a Drive.")
+                    st.error(f"Detalle al subir a Drive: {error_drive}")
                 
                 # Botón de respaldo para descarga local
                 pdf_buffer.seek(0)
