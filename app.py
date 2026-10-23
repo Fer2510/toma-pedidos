@@ -148,4 +148,122 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('ALIGN', (0,1), (0,-1), 'LEFT'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('BOTTOMPADDING', (0,0), (-1,0), 6),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f1f8e9')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#c8e6c9')),
+        ('FONTSIZE', (0,1), (-1,-1), 9)
+    ]))
+    
+    elements.append(t)
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, df_enviado):
+    df_activos = df_enviado[
+        (df_enviado["EXISTENCIA"] > 0) | 
+        (df_enviado["CAMBIOS"] > 0) | 
+        (df_enviado["PEDIDO"] > 0) | 
+        (df_enviado["SUGERIDO"] > 0)
+    ]
+    
+    texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
+                f"📍 *Mercado:* {mercado_val}\n" \
+                f"📅 *Fecha:* {str(fecha_val)}\n" \
+                f"👤 *Vendedor:* {vendedor_val}\n\n" \
+                f"*Detalle de ítems:*\n"
+    
+    for _, row in df_activos.iterrows():
+        texto_wsp += f"• *{row['PRODUCTO']}*\n" \
+                     f"  - Existencia: {row['EXISTENCIA']}\n" \
+                     f"  - Cambios: {row['CAMBIOS']}\n" \
+                     f"  - Pedido: {row['PEDIDO']}\n" \
+                     f"  - Sugerido: {row['SUGERIDO']}\n\n"
+                     
+    return texto_wsp
+
+if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
+    if not mercado:
+        st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
+    else:
+        with st.spinner("Actualizando Google Sheets..."):
+            try:
+                scopes = [
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive"
+                ]
+                creds_dict = dict(st.secrets["gcp_service_account"])
+                creds = Credentials.from_service_account_info(creds_dict)
+                creds = creds.with_scopes(scopes)
+                
+                # 1. Actualizar Google Sheets
+                client = gspread.authorize(creds)
+                spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
+                sheet = spreadsheet.worksheet("Matriz de Pedidos")
+                
+                sheet.update_cell(2, 3, str(mercado))
+                sheet.update_cell(3, 3, str(fecha_pedido))
+                
+                for index, row in edited_df.iterrows():
+                    fila = 6 + index
+                    sheet.update(f'B{fila}:F{fila}', [[
+                        str(row["PRODUCTO"]), 
+                        int(row["EXISTENCIA"]), 
+                        int(row["CAMBIOS"]), 
+                        int(row["PEDIDO"]), 
+                        int(row["SUGERIDO"])
+                    ]])
+                
+                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
+                
+                # 2. Generar el PDF descargable
+                vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
+                merc_clean = mercado.strip().replace(" ", "_")
+                nombre_pdf = f"Pedido_{merc_clean}_{vend_clean}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                
+                pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
+                
+                st.download_button(
+                    label="📥 Descargar Comprobante en PDF",
+                    data=pdf_buffer,
+                    file_name=nombre_pdf,
+                    mime="application/pdf"
+                )
+                
+                # 3. Preparar texto completo y enlace para WhatsApp
+                texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
+                whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+                
+                st.markdown(
+                    f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
+                    unsafe_allow_html=True
+                )
+                
+            except Exception as e:
+                error_str = str(e)
+                if "200" in error_str:
+                    st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
+                    
+                    vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
+                    merc_clean = mercado.strip().replace(" ", "_")
+                    nombre_pdf = f"Pedido_{merc_clean}_{vend_clean}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    
+                    pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
+                    
+                    st.download_button(
+                        label="📥 Descargar Comprobante en PDF",
+                        data=pdf_buffer,
+                        file_name=nombre_pdf,
+                        mime="application/pdf"
+                    )
+                    
+                    texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
+                    whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+                    
+                    st.markdown(
+                        f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.error(f"Error al procesar: {error_str}")
