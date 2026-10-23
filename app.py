@@ -15,11 +15,13 @@ st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wid
 st.title("🛒 Sistema de Toma de Pedidos")
 st.markdown("Ingrese el mercado y complete las cantidades para cada producto.")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 with col1:
     mercado = st.text_input("MERCADO / ZONA:", placeholder="Ej. Mercado Central / Cliente X")
 with col2:
     fecha_pedido = st.date_input("FECHA:", value=datetime.now())
+with col3:
+    vendedor = st.text_input("VENDEDOR:", placeholder="Ej. Pedro Perez")
 
 productos = [
     "ALIÑO PICADO 150 g.", "AJI 200 g.", "ACELGAS 200 g.", "AJO PORRO 300 g.", "ALBAHACA 50 g.",
