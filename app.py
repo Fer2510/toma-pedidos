@@ -61,13 +61,17 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         
         client = gspread.authorize(creds)
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
+        
+        # Imprimir las pestañas disponibles en la consola de Streamlit para verificar el nombre exacto
+        nombres_pestanas = [ws.title for ws in spreadsheet.worksheets()]
+        st.write("Pestañas encontradas en el documento:", nombres_pestanas)
+        
         sheet = spreadsheet.worksheet("Matriz de Pedidos")
         
-        # 1. Escribir Mercado y Fecha en celdas fijas
+        # Escribir mercado y fecha
         sheet.update('C2', [[str(mercado_val)]])
         sheet.update('C3', [[str(fecha_val)]])
         
-        # 2. Preparar la matriz completa de los 45 productos
         filas_a_guardar = []
         for _, row in df_enviado.iterrows():
             filas_a_guardar.append([
@@ -78,14 +82,12 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
                 int(row["SUGERIDO"])
             ])
             
-        # 3. Escribir directamente desde la fila 6 hasta la 50 (Columna B a F)
-        sheet.update('B6:F50', filas_a_guardar)
+        st.write(f"Intentando actualizar {len(filas_a_guardar)} filas en B6:F{5 + len(filas_a_guardار)}")
+        
+        sheet.update(f'B6:F{5 + len(filas_a_guardar)}', filas_a_guardar)
         return True, "OK"
     except Exception as e:
-        error_str = str(e)
-        if "Response [200]" in error_str or "200" in error_str:
-            return True, "OK"
-        return False, error_str
+        return False, str(e)
 
 if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
@@ -94,6 +96,6 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
         with st.spinner("Enviando pedido a la nube..."):
             exito, mensaje = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
             if exito:
-                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
+                st.success(f"¡Pedido para **{mercado}** enviado correctamente!")
             else:
-                st.error(f"Error al guardar: {mensaje}")
+                st.error(f"Error detallado: {mensaje}")
