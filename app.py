@@ -3,8 +3,6 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -118,36 +116,11 @@ def generar_pdf(df_enviado, mercado_val, fecha_val):
     buffer.seek(0)
     return buffer
 
-# Función mejorada con captura exacta de error para Drive
-def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds):
-    try:
-        drive_service = build('drive', 'v3', credentials=creds)
-        
-        ID_CARPETA_DESTINO = "162rUBUDTFb04W4GJR-dDdX5-6M8w62jJ" 
-        
-        file_metadata = {
-            'name': nombre_archivo,
-            'mimeType': 'application/pdf',
-            'parents': [ID_CARPETA_DESTINO]
-        }
-        
-        media = MediaIoBaseUpload(pdf_buffer, mimetype='application/pdf', resumable=True)
-        
-        file = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id, webViewLink'
-        ).execute()
-        
-        return file.get('webViewLink'), None
-    except Exception as e:
-        return None, str(e)
-
-if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primary"):
+if st.button("🚀 Enviar Pedido y Generar Comprobante", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Procesando y sincronizando con Google Cloud..."):
+        with st.spinner("Actualizando Google Sheets..."):
             try:
                 scopes = [
                     "https://www.googleapis.com/auth/spreadsheets",
@@ -175,23 +148,14 @@ if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primar
                         int(row["SUGERIDO"])
                     ]])
                 
-# 2. Generar y subir el PDF automáticamente a Google Drive
+                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
+                
+                # 2. Generar el PDF descargable
                 pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
                 nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                 
-                link_drive, error_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds)
-                
-                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
-                
-                if link_drive:
-                    st.markdown(f"📄 **PDF guardado en Google Drive correctamente.** [Ver documento en Drive]({link_drive})")
-                else:
-                    st.error(f"Detalle al subir a Drive: {error_drive}")
-                
-                # Botón de respaldo para descarga local
-                pdf_buffer.seek(0)
                 st.download_button(
-                    label="📥 Descargar copia local del PDF",
+                    label="📥 Descargar Comprobante en PDF",
                     data=pdf_buffer,
                     file_name=nombre_pdf,
                     mime="application/pdf"
@@ -200,11 +164,14 @@ if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primar
             except Exception as e:
                 error_str = str(e)
                 if "200" in error_str:
-                    st.success(f"¡Pedido para **{mercado}** guardado con éxito en Google Sheets!")
+                    st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
                     pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
                     nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                    link_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds)
-                    if link_drive:
-                        st.markdown(f"📄 **PDF guardado en Google Drive correctamente.** [Ver documento en Drive]({link_drive})")
+                    st.download_button(
+                        label="📥 Descargar Comprobante en PDF",
+                        data=pdf_buffer,
+                        file_name=nombre_pdf,
+                        mime="application/pdf"
+                    )
                 else:
                     st.error(f"Error al procesar: {error_str}")
