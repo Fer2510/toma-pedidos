@@ -118,14 +118,18 @@ def generar_pdf(df_enviado, mercado_val, fecha_val):
     buffer.seek(0)
     return buffer
 
-# Función para subir el PDF automáticamente a Google Drive
+# Función para subir el PDF automáticamente a tu carpeta de Google Drive
 def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds):
     try:
         drive_service = build('drive', 'v3', credentials=creds)
         
+        # ID de tu carpeta de Google Drive configurado
+        ID_CARPETA_DESTINO = "162rUBUDTFb04W4GJR-dDdX5-6M8w62jJ" 
+        
         file_metadata = {
             'name': nombre_archivo,
-            'mimeType': 'application/pdf'
+            'mimeType': 'application/pdf',
+            'parents': [ID_CARPETA_DESTINO]
         }
         
         media = MediaIoBaseUpload(pdf_buffer, mimetype='application/pdf', resumable=True)
@@ -185,7 +189,7 @@ if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primar
                 else:
                     st.warning("El pedido se guardó en la hoja, pero hubo un detalle al subir el PDF a Drive.")
                 
-                # Botón adicional por si el usuario también desea descargarlo localmente de respaldo
+                # Botón de respaldo para descarga local
                 pdf_buffer.seek(0)
                 st.download_button(
                     label="📥 Descargar copia local del PDF",
@@ -205,7 +209,3 @@ if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primar
                         st.markdown(f"📄 **PDF guardado en Google Drive correctamente.** [Ver documento en Drive]({link_drive})")
                 else:
                     st.error(f"Error al procesar: {error_str}")
-                
-                st.success(f"¡Pedido para **{mercado}** enviado y registrado con éxito en la hoja!")
-            except Exception as e:
-                st.error(f"Error al guardar: {str(e)}")
