@@ -53,7 +53,7 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función optimizada para guardar en Google Sheets
+# Función optimizada para guardar en Google Sheets de forma silenciosa
 def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     try:
         scopes = [
@@ -69,7 +69,7 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
         sheet = spreadsheet.get_worksheet(0)
         
-        # Escribir mercado y fecha usando el método seguro de celdas
+        # Escribir mercado y fecha
         sheet.update_acell('C2', mercado_val)
         sheet.update_acell('C3', str(fecha_val))
         
@@ -96,6 +96,7 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        exito = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
-        if exito:
-            st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo de la oficina principal!")
+        with st.spinner("Enviando pedido a la nube..."):
+            exito = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
+            if exito:
+                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo de la oficina principal!")
