@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
 
 # Configuración de la página
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
@@ -30,9 +32,8 @@ productos = [
 ]
 
 st.markdown("### Detalle de Productos")
-st.markdown("Deslice o complete los campos para cada producto:")
 
-# Crear un DataFrame interactivo para que el usuario ingrese los datos
+# Crear un DataFrame interactivo
 data = []
 for p in productos:
     data.append({
@@ -45,7 +46,6 @@ for p in productos:
 
 df_input = pd.DataFrame(data)
 
-# Mostrar tabla editable en la web
 edited_df = st.data_editor(
     df_input,
     num_rows="fixed",
@@ -53,25 +53,46 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
+# Función para guardar en Google Sheets
+def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
+    try:
+        # Configurar credenciales desde los Secrets de Streamlit
+        scope = ["https://www.spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        client = gspread.authorize(creds)
+        
+        # Abrir la hoja de cálculo por su nombre exacto
+        sheet = client.open("Consolidado_Pedidos_Google_Forms").worksheet("Matriz de Pedidos")
+        
+        # Opcional: Actualizar celdas de Mercado y Fecha en la parte superior
+        sheet.update('C2', [[mercado_val]])
+        sheet.update('C3', [[str(fecha_val)]])
+        
+        # Preparar y vaciar filas de datos (asumiendo que los productos empiezan desde la fila 5)
+        filas_a_guardar = []
+        for index, row in df_enviado.iterrows():
+            filas_a_guardar.append([
+                row["PRODUCTO"], 
+                int(row["EXISTENCIA"]), 
+                int(row["CAMBIOS"]), 
+                int(row["PEDIDO"]), 
+                int(row["SUGERIDO"])
+            ])
+        
+        # Escribir en la hoja (ejemplo: rango B5:F49)
+        sheet.update(f'B5:F{4+len(filas_a_guardar)}', filas_a_guardar)
+        return True
+    except Exception as e:
+        st.error(f"Error al conectar con Google Sheets: {e}")
+        return False
+
 # Botón para enviar pedido
 if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        # Aquí se procesa y se envía a Google Sheets / CSV
-        st.success(f"¡Pedido para **{mercado}** registrado con éxito!")
-        
-        # Mostrar resumen de lo que se envió con valores mayores a 0
-        df_enviar = edited_df[(edited_df["EXISTENCIA"] > 0) | (edited_df["CAMBIOS"] > 0) | (edited_df["PEDIDO"] > 0) | (edited_df["SUGERIDO"] > 0)]
-        
-        st.write("Resumen de productos con movimiento:")
-        st.dataframe(df_enviar)
-        
-        # Opcional: Descargar CSV localmente como respaldo
-        csv = edited_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Descargar respaldo CSV",
-            data=csv,
-            file_name=f"pedido_{mercado}_{fecha_pedido}.csv",
-            mime='text/csv',
-        )
+        # Filtrar o enviar completo. Aquí enviamos todos los productos de la tabla
+        exito = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
+        if exito:
+            st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de Excel de la oficina principal!")
