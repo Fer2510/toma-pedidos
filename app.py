@@ -3,6 +3,13 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+import io
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
@@ -49,11 +56,95 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
+# Función para generar el PDF en memoria
+def generar_pdf(df_enviado, mercado_val, fecha_val):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    elements = []
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=colors.HexColor('#1b5e20'),
+        alignment=1,
+        spaceAfter=15
+    )
+    
+    normal_style = styles['Normal']
+    
+    elements.append(Paragraph("<b>REPORTE DE PEDIDO - OFICINA PRINCIPAL</b>", title_style))
+    elements.append(Paragraph(f"<b>Mercado / Zona:</b> {mercado_val}", normal_style))
+    elements.append(Paragraph(f"<b>Fecha:</b> {str(fecha_val)}", normal_style))
+    elements.append(Spacer(1, 15))
+    
+    df_filtrado = df_enviado[
+        (df_enviado["EXISTENCIA"] > 0) | 
+        (df_enviado["CAMBIOS"] > 0) | 
+        (df_enviado["PEDIDO"] > 0) | 
+        (df_enviado["SUGERIDO"] > 0)
+    ]
+    
+    if df_filtrado.empty:
+        df_filtrado = df_enviado
+        
+    table_data = [["PRODUCTO", "EXISTENCIA", "CAMBIOS", "PEDIDO", "SUGERIDO"]]
+    for _, row in df_filtrado.iterrows():
+        table_data.append([
+            str(row["PRODUCTO"]),
+            str(row["EXISTENCIA"]),
+            str(row["CAMBIOS"]),
+            str(row["PEDIDO"]),
+            str(row["SUGERIDO"])
+        ])
+        
+    t = Table(table_data, colWidths=[200, 70, 70, 70, 70])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#2e7d32')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN', (0,1), (0,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('BOTTOMPADDING', (0,0), (-1,0), 6),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f1f8e9')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#c8e6c9')),
+        ('FONTSIZE', (0,1), (-1,-1), 9),
+    ]))
+    
+    elements.append(t)
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+# Función para subir el PDF automáticamente a Google Drive
+def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds):
+    try:
+        drive_service = build('drive', 'v3', credentials=creds)
+        
+        file_metadata = {
+            'name': nombre_archivo,
+            'mimeType': 'application/pdf'
+        }
+        
+        media = MediaIoBaseUpload(pdf_buffer, mimetype='application/pdf', resumable=True)
+        
+        file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, webViewLink'
+        ).execute()
+        
+        return file.get('webViewLink')
+    except Exception as e:
+        return None
+
+if st.button("🚀 Enviar Pedido, Actualizar Hoja y Subir a Drive", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Enviando pedido a Google Sheets..."):
+        with st.spinner("Procesando y sincronizando con Google Cloud..."):
             try:
                 scopes = [
                     "https://www.googleapis.com/auth/spreadsheets",
@@ -63,15 +154,14 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
                 creds = Credentials.from_service_account_info(creds_dict)
                 creds = creds.with_scopes(scopes)
                 
+                # 1. Actualizar Google Sheets
                 client = gspread.authorize(creds)
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Usar update_cell para evitar errores de formato de listas en celdas individuales
-                sheet.update_cell(2, 3, str(mercado))       # Fila 2, Columna 3 (C2)
-                sheet.update_cell(3, 3, str(fecha_pedido))  # Fila 3, Columna 3 (C3)
+                sheet.update_cell(2, 3, str(mercado))
+                sheet.update_cell(3, 3, str(fecha_pedido))
                 
-                # Enviar fila por fila de forma segura para los 45 productos
                 for index, row in edited_df.iterrows():
                     fila = 6 + index
                     sheet.update(f'B{fila}:F{fila}', [[
@@ -81,6 +171,40 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
                         int(row["PEDIDO"]), 
                         int(row["SUGERIDO"])
                     ]])
+                
+                # 2. Generar y subir el PDF automáticamente a Google Drive
+                pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
+                nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                
+                link_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds)
+                
+                st.success(f"¡Pedido para **{mercado}** procesado con éxito!")
+                
+                if link_drive:
+                    st.markdown(f"📄 **PDF guardado en Google Drive correctamente.** [Ver documento en Drive]({link_drive})")
+                else:
+                    st.warning("El pedido se guardó en la hoja, pero hubo un detalle al subir el PDF a Drive.")
+                
+                # Botón adicional por si el usuario también desea descargarlo localmente de respaldo
+                pdf_buffer.seek(0)
+                st.download_button(
+                    label="📥 Descargar copia local del PDF",
+                    data=pdf_buffer,
+                    file_name=nombre_pdf,
+                    mime="application/pdf"
+                )
+                
+            except Exception as e:
+                error_str = str(e)
+                if "200" in error_str:
+                    st.success(f"¡Pedido para **{mercado}** guardado con éxito en Google Sheets!")
+                    pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
+                    nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    link_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds)
+                    if link_drive:
+                        st.markdown(f"📄 **PDF guardado en Google Drive correctamente.** [Ver documento en Drive]({link_drive})")
+                else:
+                    st.error(f"Error al procesar: {error_str}")
                 
                 st.success(f"¡Pedido para **{mercado}** enviado y registrado con éxito en la hoja!")
             except Exception as e:
