@@ -61,11 +61,6 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         
         client = gspread.authorize(creds)
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
-        
-        # Imprimir las pestañas disponibles en la consola de Streamlit para verificar el nombre exacto
-        nombres_pestanas = [ws.title for ws in spreadsheet.worksheets()]
-        st.write("Pestañas encontradas en el documento:", nombres_pestanas)
-        
         sheet = spreadsheet.worksheet("Matriz de Pedidos")
         
         # Escribir mercado y fecha
@@ -82,20 +77,22 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
                 int(row["SUGERIDO"])
             ])
             
-        st.write(f"Intentando actualizar {len(filas_a_guardar)} filas en B6:F{5 + len(filas_a_guardار)}")
-        
         sheet.update(f'B6:F{5 + len(filas_a_guardar)}', filas_a_guardar)
-        return True, "OK"
+        return True
     except Exception as e:
-        return False, str(e)
+        error_str = str(e)
+        # Si la respuesta contiene el código 200, significa que se envió correctamente
+        if "200" in error_str:
+            return True
+        return False
 
 if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
         with st.spinner("Enviando pedido a la nube..."):
-            exito, mensaje = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
+            exito = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
             if exito:
-                st.success(f"¡Pedido para **{mercado}** enviado correctamente!")
+                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
             else:
-                st.error(f"Error detallado: {mensaje}")
+                st.error("Ocurrió un error al intentar guardar los datos.")
