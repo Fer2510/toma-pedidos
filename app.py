@@ -53,12 +53,17 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función para guardar en Google Sheets
+# Función para guardar en Google Sheets con ámbitos corregidos
 def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     try:
-        scope = ["https://www.spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
         creds_dict = dict(st.secrets["gcp_service_account"])
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        creds = Credentials.from_service_account_info(creds_dict)
+        creds = creds.with_scopes(scopes)
+        
         client = gspread.authorize(creds)
         
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
