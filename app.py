@@ -26,8 +26,18 @@ st.markdown(
     div[class*="viewerBadge"] {display: none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     </style>
+    
+    <script>
+    // Script para remover automáticamente el botón inferior de Manage app
+    const ocultarManageApp = () => {
+        const badges = document.querySelectorAll('.viewerBadge_container__1QSob, [data-testid="stToolbar"]');
+        badges.forEach(el => el.remove());
+    };
+    setInterval(ocultarManageApp, 500);
+    </script>
     """,
     unsafe_allow_html=True
+)
 )
 
 st.title("🛒 Sistema de Toma de Pedidos")
