@@ -177,9 +177,12 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 
                 st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
                 
-                # 2. Generar el PDF descargable
+                # 2. Generar el PDF descargable (con nombre que incluye mercado, vendedor y hora)
+                vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
+                merc_clean = mercado.strip().replace(" ", "_")
+                nombre_pdf = f"Pedido_{merc_clean}_{vend_clean}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                
                 pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
-                nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                 
                 st.download_button(
                     label="📥 Descargar Comprobante en PDF",
@@ -201,8 +204,12 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 error_str = str(e)
                 if "200" in error_str:
                     st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
+                    
+                    vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
+                    merc_clean = mercado.strip().replace(" ", "_")
+                    nombre_pdf = f"Pedido_{merc_clean}_{vend_clean}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    
                     pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
-                    nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                     
                     st.download_button(
                         label="📥 Descargar Comprobante en PDF",
