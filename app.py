@@ -4,17 +4,18 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
 import urllib.parse
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
+
+# Ocultar barra superior, menú, pie de página y botones flotantes de Streamlit
 st.markdown(
     """
     <style>
-    /* Ocultar barra superior, menú, pie de página y botones flotantes de Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -28,7 +29,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-)
+
 st.title("🛒 Sistema de Toma de Pedidos")
 st.markdown("Ingrese el mercado y complete las cantidades para cada producto.")
 
@@ -91,6 +92,15 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     )
     
     normal_style = styles['Normal']
+    
+    # Opcional: Logo si lo tienes en el repositorio como "logo.png"
+    try:
+        logo = Image("logo.png", width=100, height=45)
+        logo.hAlign = 'CENTER'
+        elements.append(logo)
+        elements.append(Spacer(1, 10))
+    except:
+        pass
     
     elements.append(Paragraph("<b>REPORTE DE PEDIDO - OFICINA PRINCIPAL</b>", title_style))
     elements.append(Paragraph(f"<b>Mercado / Zona:</b> {mercado_val}", normal_style))
@@ -194,7 +204,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 
                 st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
                 
-                # 2. Generar el PDF descargable (con nombre que incluye mercado, vendedor y hora)
+                # 2. Generar el PDF descargable
                 vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
                 merc_clean = mercado.strip().replace(" ", "_")
                 nombre_pdf = f"Pedido_{merc_clean}_{vend_clean}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
