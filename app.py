@@ -4,7 +4,7 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
@@ -88,7 +88,7 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función para generar el PDF en memoria
+# Función para generar el PDF en memoria (Sin logotipo)
 def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -106,15 +106,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     
     normal_style = styles['Normal']
     
-    # Intenta cargar el logo de forma segura; si no existe en el servidor, continúa sin error
-    try:
-        logo = Image("logo.png", width=100, height=45)
-        logo.hAlign = 'CENTER'
-        elements.append(logo)
-        elements.append(Spacer(1, 10))
-    except Exception:
-        pass
-    
+    # Encabezados del reporte sin imagen
     elements.append(Paragraph("<b>REPORTE DE PEDIDO - OFICINA PRINCIPAL</b>", title_style))
     elements.append(Paragraph(f"<b>Mercado / Zona:</b> {mercado_val}", normal_style))
     elements.append(Paragraph(f"<b>Fecha:</b> {str(fecha_val)}", normal_style))
