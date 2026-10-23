@@ -11,6 +11,20 @@ import io
 import urllib.parse
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
+st.markdown("""
+    <style>
+    /* Ocultar completamente la insignia de Streamlit Cloud de la esquina inferior derecha */
+    .viewerBadge_container__1QSob, 
+    a[href*="streamlit.io/cloud"], 
+    div[class*="viewerBadge"],
+    footer {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Ocultar barra superior, menú, pie de página y botón flotante de Manage app de forma agresiva
 st.markdown("""
