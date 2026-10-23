@@ -121,12 +121,13 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     
     normal_style = styles['Normal']
     
+    # Intenta cargar el logo de forma segura; si no existe, continúa sin error
     try:
         logo = Image("logo.png", width=100, height=45)
         logo.hAlign = 'CENTER'
         elements.append(logo)
         elements.append(Spacer(1, 10))
-    except:
+    except Exception:
         pass
     
     elements.append(Paragraph("<b>REPORTE DE PEDIDO - OFICINA PRINCIPAL</b>", title_style))
