@@ -117,6 +117,28 @@ def generar_pdf(df_enviado, mercado_val, fecha_val):
     buffer.seek(0)
     return buffer
 
+def construir_mensaje_whatsapp(mercado_val, fecha_val, df_enviado):
+    df_activos = df_enviado[
+        (df_enviado["EXISTENCIA"] > 0) | 
+        (df_enviado["CAMBIOS"] > 0) | 
+        (df_enviado["PEDIDO"] > 0) | 
+        (df_enviado["SUGERIDO"] > 0)
+    ]
+    
+    texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
+                f"📍 *Mercado:* {mercado_val}\n" \
+                f"📅 *Fecha:* {str(fecha_val)}\n\n" \
+                f"*Detalle de ítems:*\n"
+    
+    for _, row in df_activos.iterrows():
+        texto_wsp += f"• *{row['PRODUCTO']}*\n" \
+                     f"  - Existencia: {row['EXISTENCIA']}\n" \
+                     f"  - Cambios: {row['CAMBIOS']}\n" \
+                     f"  - Pedido: {row['PEDIDO']}\n" \
+                     f"  - Sugerido: {row['SUGERIDO']}\n\n"
+                     
+    return texto_wsp
+
 if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
@@ -162,22 +184,8 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                     mime="application/pdf"
                 )
                 
-                # 3. Preparar texto y enlace para WhatsApp
-                df_activos = edited_df[
-                    (edited_df["EXISTENCIA"] > 0) | 
-                    (edited_df["CAMBIOS"] > 0) | 
-                    (edited_df["PEDIDO"] > 0) | 
-                    (edited_df["SUGERIDO"] > 0)
-                ]
-                
-                texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
-                            f"📍 *Mercado:* {mercado}\n" \
-                            f"📅 *Fecha:* {str(fecha_pedido)}\n\n" \
-                            f"*Detalle de ítems solicitados:*\n"
-                
-                for _, row in df_activos.iterrows():
-                    texto_wsp += f"• {row['PRODUCTO']} | Pedido: {row['PEDIDO']} | Sug: {row['SUGERIDO']}\n"
-                
+                # 3. Preparar texto completo y enlace para WhatsApp
+                texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, edited_df)
                 whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
                 
                 st.markdown(
@@ -199,21 +207,9 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                         mime="application/pdf"
                     )
                     
-                    df_activos = edited_df[
-                        (edited_df["EXISTENCIA"] > 0) | 
-                        (edited_df["CAMBIOS"] > 0) | 
-                        (edited_df["PEDIDO"] > 0) | 
-                        (edited_df["SUGERIDO"] > 0)
-                    ]
-                    
-                    texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
-                                f"📍 *Mercado:* {mercado}\n" \
-                                f"📅 *Fecha:* {str(fecha_pedido)}\n\n" \
-                                f"*Detalle:*\n"
-                    for _, row in df_activos.iterrows():
-                        texto_wsp += f"• {row['PRODUCTO']} | Pedido: {row['PEDIDO']}\n"
-                    
+                    texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, edited_df)
                     whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+                    
                     st.markdown(
                         f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
                         unsafe_allow_html=True
