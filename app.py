@@ -131,7 +131,7 @@ def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, df_enviado)
     texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
                 f"📍 *Mercado:* {mercado_val}\n" \
                 f"📅 *Fecha:* {str(fecha_val)}\n\n" \
-                     *Vendedor:* {vendedor_val}\n" \
+                f"   *Vendedor:* {vendedor_val}\n" \
                 f"*Detalle de ítems:*\n"
     
     for _, row in df_activos.iterrows():
