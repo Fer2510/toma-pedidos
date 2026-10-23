@@ -53,7 +53,7 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Conectando y enviando a Google Sheets..."):
+        with st.spinner("Enviando pedido a Google Sheets..."):
             try:
                 scopes = [
                     "https://www.googleapis.com/auth/spreadsheets",
@@ -67,17 +67,20 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Escritura directa por celdas individuales para garantizar que Google Sheets procese el cambio
-                sheet.update('C2', str(mercado))
-                sheet.update('C3', str(fecha_pedido))
+                # Usar update_cell para evitar errores de formato de listas en celdas individuales
+                sheet.update_cell(2, 3, str(mercado))       # Fila 2, Columna 3 (C2)
+                sheet.update_cell(3, 3, str(fecha_pedido))  # Fila 3, Columna 3 (C3)
                 
+                # Enviar fila por fila de forma segura para los 45 productos
                 for index, row in edited_df.iterrows():
                     fila = 6 + index
-                    sheet.update(f'B{fila}', str(row["PRODUCTO"]))
-                    sheet.update(f'C{fila}', int(row["EXISTENCIA"]))
-                    sheet.update(f'D{fila}', int(row["CAMBIOS"]))
-                    sheet.update(f'E{fila}', int(row["PEDIDO"]))
-                    sheet.update(f'F{fila}', int(row["SUGERIDO"]))
+                    sheet.update(f'B{fila}:F{fila}', [[
+                        str(row["PRODUCTO"]), 
+                        int(row["EXISTENCIA"]), 
+                        int(row["CAMBIOS"]), 
+                        int(row["PEDIDO"]), 
+                        int(row["SUGERIDO"])
+                    ]])
                 
                 st.success(f"¡Pedido para **{mercado}** enviado y registrado con éxito en la hoja!")
             except Exception as e:
