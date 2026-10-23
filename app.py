@@ -49,50 +49,36 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    creds = Credentials.from_service_account_info(creds_dict)
-    creds = creds.with_scopes(scopes)
-    
-    client = gspread.authorize(creds)
-    spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
-    sheet = spreadsheet.worksheet("Matriz de Pedidos")
-    
-    # 1. Escribir mercado y fecha de manera directa
-    sheet.update_acell('C2', str(mercado_val))
-    sheet.update_acell('C3', str(fecha_val))
-    
-    # 2. Construir la matriz de datos para los productos
-    filas_a_guardar = []
-    for _, row in df_enviado.iterrows():
-        filas_a_guardar.append([
-            str(row["PRODUCTO"]), 
-            int(row["EXISTENCIA"]), 
-            int(row["CAMBIOS"]), 
-            int(row["PEDIDO"]), 
-            int(row["SUGERIDO"])
-        ])
-        
-    # 3. Actualizar el rango exacto de la matriz de productos (B6 hasta F50)
-    rango = f'B6:F{5 + len(filas_a_guardar)}'
-    sheet.update(rango, filas_a_guardar)
-    return True
-
 if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Enviando pedido a la nube..."):
+        with st.spinner("Conectando y enviando a Google Sheets..."):
             try:
-                guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
-                st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
+                scopes = [
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive"
+                ]
+                creds_dict = dict(st.secrets["gcp_service_account"])
+                creds = Credentials.from_service_account_info(creds_dict)
+                creds = creds.with_scopes(scopes)
+                
+                client = gspread.authorize(creds)
+                spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
+                sheet = spreadsheet.worksheet("Matriz de Pedidos")
+                
+                # Escritura directa por celdas individuales para garantizar que Google Sheets procese el cambio
+                sheet.update('C2', str(mercado))
+                sheet.update('C3', str(fecha_pedido))
+                
+                for index, row in edited_df.iterrows():
+                    fila = 6 + index
+                    sheet.update(f'B{fila}', str(row["PRODUCTO"]))
+                    sheet.update(f'C{fila}', int(row["EXISTENCIA"]))
+                    sheet.update(f'D{fila}', int(row["CAMBIOS"]))
+                    sheet.update(f'E{fila}', int(row["PEDIDO"]))
+                    sheet.update(f'F{fila}', int(row["SUGERIDO"]))
+                
+                st.success(f"¡Pedido para **{mercado}** enviado y registrado con éxito en la hoja!")
             except Exception as e:
-                # Si la excepción contiene el código HTTP 200, significa que la escritura se completó correctamente
-                if "200" in str(e):
-                    st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
-                else:
-                    st.error(f"Error detallado al conectar con Google Sheets: {e}")
+                st.error(f"Error al guardar: {str(e)}")
