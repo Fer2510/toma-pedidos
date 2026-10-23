@@ -53,7 +53,7 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función optimizada para guardar en Google Sheets de forma silenciosa
+# Función limpia y directa para Google Sheets
 def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     try:
         scopes = [
@@ -69,26 +69,26 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
         sheet = spreadsheet.get_worksheet(0)
         
-        # Escribir mercado y fecha
-        sheet.update_acell('C2', mercado_val)
+        # Actualizar celdas individuales de cabecera de forma segura
+        sheet.update_acell('C2', str(mercado_val))
         sheet.update_acell('C3', str(fecha_val))
         
-        # Preparar filas y enviar en bloque
-        filas_a_guardar = []
+        # Preparar la matriz de datos para la hoja
         for index, row in df_enviado.iterrows():
-            filas_a_guardar.append([
+            fila_num = 6 + index
+            valores_fila = [
                 str(row["PRODUCTO"]), 
                 int(row["EXISTENCIA"]), 
                 int(row["CAMBIOS"]), 
                 int(row["PEDIDO"]), 
                 int(row["SUGERIDO"])
-            ])
-        
-        rango_destino = f'B6:F{5 + len(filas_a_guardar)}'
-        sheet.update(rango_destino, filas_a_guardar)
+            ]
+            # Actualizar cada fila individualmente para evitar conflictos de respuesta HTTP
+            sheet.update(f'B{fila_num}:F{fila_num}', [valores_fila])
+            
         return True
     except Exception as e:
-        st.error(f"Error al conectar con Google Sheets: {e}")
+        st.error(f"Error detallado al conectar con Google Sheets: {e}")
         return False
 
 # Botón para enviar pedido
@@ -96,7 +96,7 @@ if st.button("🚀 Enviar Pedido a la Oficina Principal", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Enviando pedido a la nube..."):
-            exito = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
-            if exito:
+        with st.spinner("Procesando y enviando pedido..."):
+            resultado = guardar_en_google_sheets(edited_df, mercado, fecha_pedido)
+            if resultado is True:
                 st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo de la oficina principal!")
