@@ -12,8 +12,37 @@ import urllib.parse
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
-# Ocultar barra superior, menú, pie de página y botones flotantes
-st.markdown("<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;} .stApp > header {display: none;} [data-testid='stToolbar'] {visibility: hidden; display: none;} [data-testid='stDecoration'] {display: none;} [data-testid='stStatusWidget'] {visibility: hidden;} div[class*='viewerBadge'] {display: none !important;} .viewerBadge_container__1QSob {display: none !important;}</style>", unsafe_allow_html=True)
+# Ocultar barra superior, menú, pie de página y botón flotante de Manage app de forma agresiva
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stApp > header {display: none;}
+    [data-testid='stToolbar'] {visibility: hidden; display: none;}
+    [data-testid='stDecoration'] {display: none;}
+    [data-testid='stStatusWidget'] {visibility: hidden;}
+    div[class*='viewerBadge'] {display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    </style>
+    
+    <script>
+    // Observador para detectar y eliminar el botón inferior de Manage app dinámicamente
+    const observer = new MutationObserver((mutations) => {
+        document.querySelectorAll('a, div, span, button').forEach(el => {
+            if (el.innerText && el.innerText.includes('Manage app')) {
+                // Sube hasta el contenedor flotante y elimínalo
+                let target = el.closest('div[style*="position: fixed"]') || el.parentElement;
+                if (target) {
+                    target.style.display = 'none';
+                    target.remove();
+                }
+            }
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+""", unsafe_allow_html=True)
 
 st.title("🛒 Sistema de Toma de Pedidos")
 st.markdown("Ingrese el mercado y complete las cantidades para cada producto.")
@@ -78,7 +107,6 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     
     normal_style = styles['Normal']
     
-    # Opcional: Logo si lo tienes en el repositorio como "logo.png"
     try:
         logo = Image("logo.png", width=100, height=45)
         logo.hAlign = 'CENTER'
