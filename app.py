@@ -53,7 +53,7 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función para guardar en Google Sheets con ámbitos corregidos
+# Función optimizada para guardar en Google Sheets
 def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     try:
         scopes = [
@@ -69,20 +69,23 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
         sheet = spreadsheet.get_worksheet(0)
         
-        sheet.update('C2', [[mercado_val]])
-        sheet.update('C3', [[str(fecha_val)]])
+        # Escribir mercado y fecha usando el método seguro de celdas
+        sheet.update_acell('C2', mercado_val)
+        sheet.update_acell('C3', str(fecha_val))
         
+        # Preparar filas y enviar en bloque
         filas_a_guardar = []
         for index, row in df_enviado.iterrows():
             filas_a_guardar.append([
-                row["PRODUCTO"], 
+                str(row["PRODUCTO"]), 
                 int(row["EXISTENCIA"]), 
                 int(row["CAMBIOS"]), 
                 int(row["PEDIDO"]), 
                 int(row["SUGERIDO"])
             ])
         
-        sheet.update(f'B6:F{5+len(filas_a_guardar)}', filas_a_guardar)
+        rango_destino = f'B6:F{5 + len(filas_a_guardar)}'
+        sheet.update(rango_destino, filas_a_guardar)
         return True
     except Exception as e:
         st.error(f"Error al conectar con Google Sheets: {e}")
