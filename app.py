@@ -12,33 +12,8 @@ import urllib.parse
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
-# Ocultar barra superior, menú, pie de página y botones flotantes de Streamlit
-st.markdown(
-    """
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stApp > header {display: none;}
-    [data-testid="stToolbar"] {visibility: hidden; display: none;}
-    [data-testid="stDecoration"] {display: none;}
-    [data-testid="stStatusWidget"] {visibility: hidden;}
-    div[class*="viewerBadge"] {display: none !important;}
-    .viewerBadge_container__1QSob {display: none !important;}
-    </style>
-    
-    <script>
-    // Script para remover automáticamente el botón inferior de Manage app
-    const ocultarManageApp = () => {
-        const badges = document.querySelectorAll('.viewerBadge_container__1QSob, [data-testid="stToolbar"]');
-        badges.forEach(el => el.remove());
-    };
-    setInterval(ocultarManageApp, 500);
-    </script>
-    """,
-    unsafe_allow_html=True
-)
-)
+# Ocultar barra superior, menú, pie de página y botones flotantes
+st.markdown("<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;} .stApp > header {display: none;} [data-testid='stToolbar'] {visibility: hidden; display: none;} [data-testid='stDecoration'] {display: none;} [data-testid='stStatusWidget'] {visibility: hidden;} div[class*='viewerBadge'] {display: none !important;} .viewerBadge_container__1QSob {display: none !important;}</style>", unsafe_allow_html=True)
 
 st.title("🛒 Sistema de Toma de Pedidos")
 st.markdown("Ingrese el mercado y complete las cantidades para cada producto.")
