@@ -33,7 +33,6 @@ productos = [
 
 st.markdown("### Detalle de Productos")
 
-# Crear un DataFrame interactivo
 data = []
 for p in productos:
     data.append({
@@ -53,7 +52,7 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función conectada directamente a la pestaña "Matriz de Pedidos"
+# Función de guardado con búsqueda automática de celdas
 def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     try:
         scopes = [
@@ -65,19 +64,34 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         creds = creds.with_scopes(scopes)
         
         client = gspread.authorize(creds)
-        
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
-        
-        # AQUÍ ESTABA EL DETALLE: Abrimos explícitamente la pestaña correcta
         sheet = spreadsheet.worksheet("Matriz de Pedidos")
         
-        # Actualizar celdas de cabecera
-        sheet.update_acell('C2', str(mercado_val))
-        sheet.update_acell('C3', str(fecha_val))
+        # Buscar dinámicamente dónde está la celda "MERCADO:" o actualizar C2 por defecto
+        try:
+            cell_mercado = sheet.find("MERCADO:")
+            sheet.update_cell(cell_mercado.row, cell_mercado.col + 1, str(mercado_val))
+        except:
+            sheet.update_acell('C2', str(mercado_val))
+            
+        try:
+            cell_fecha = sheet.find("FECHA:")
+            sheet.update_cell(cell_fecha.row, cell_fecha.col + 1, str(fecha_val))
+        except:
+            sheet.update_acell('C3', str(fecha_val))
         
-        # Actualizar filas de productos en la matriz
+        # Buscar dónde dice "PRODUCTO" para empezar a rellenar justo debajo
+        try:
+            cell_prod = sheet.find("PRODUCTO")
+            fila_inicio = cell_prod.row + 1
+            col_letra = gspread.utils.rowcol_to_a1(1, cell_prod.col)[0] # Columna donde dice producto (ej. B)
+        except:
+            fila_inicio = 6
+            col_letra = 'B'
+        
+        # Escribir producto por producto haciendo coincidir el nombre exacto de la lista
         for index, row in df_enviado.iterrows():
-            fila_num = 6 + index
+            fila_actual = fila_inicio + index
             valores_fila = [
                 str(row["PRODUCTO"]), 
                 int(row["EXISTENCIA"]), 
@@ -85,7 +99,8 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
                 int(row["PEDIDO"]), 
                 int(row["SUGERIDO"])
             ]
-            sheet.update(f'B{fila_num}:F{fila_num}', [valores_fila])
+            # Rango dinámico desde la columna del producto hasta 4 columnas a la derecha (Existencia, Cambios, Pedido, Sugerido)
+            sheet.update(f'{col_letra}{fila_actual}:F{fila_actual}', [valores_fila])
             
         return True
     except Exception as e:
