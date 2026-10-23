@@ -53,7 +53,7 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Función definitiva para aislar la respuesta de Google Sheets
+# Función conectada directamente a la pestaña "Matriz de Pedidos"
 def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
     try:
         scopes = [
@@ -67,13 +67,15 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
         client = gspread.authorize(creds)
         
         spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
-        sheet = spreadsheet.get_worksheet(0)
+        
+        # AQUÍ ESTABA EL DETALLE: Abrimos explícitamente la pestaña correcta
+        sheet = spreadsheet.worksheet("Matriz de Pedidos")
         
         # Actualizar celdas de cabecera
         sheet.update_acell('C2', str(mercado_val))
         sheet.update_acell('C3', str(fecha_val))
         
-        # Actualizar filas de productos
+        # Actualizar filas de productos en la matriz
         for index, row in df_enviado.iterrows():
             fila_num = 6 + index
             valores_fila = [
@@ -86,12 +88,7 @@ def guardar_en_google_sheets(df_enviado, mercado_val, fecha_val):
             sheet.update(f'B{fila_num}:F{fila_num}', [valores_fila])
             
         return True
-    except gspread.exceptions.APIError as e:
-        # Si es un error real de la API de Google
-        st.error(f"Error de API de Google Sheets: {e}")
-        return False
     except Exception as e:
-        # Si el texto del error contiene Response [200], lo tratamos como éxito absoluto
         error_str = str(e)
         if "Response [200]" in error_str:
             return True
