@@ -8,6 +8,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
+import urllib.parse
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
@@ -116,7 +117,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val):
     buffer.seek(0)
     return buffer
 
-if st.button("🚀 Enviar Pedido y Generar Comprobante", type="primary"):
+if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
@@ -161,17 +162,61 @@ if st.button("🚀 Enviar Pedido y Generar Comprobante", type="primary"):
                     mime="application/pdf"
                 )
                 
+                # 3. Preparar texto y enlace para WhatsApp
+                df_activos = edited_df[
+                    (edited_df["EXISTENCIA"] > 0) | 
+                    (edited_df["CAMBIOS"] > 0) | 
+                    (edited_df["PEDIDO"] > 0) | 
+                    (edited_df["SUGERIDO"] > 0)
+                ]
+                
+                texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
+                            f"📍 *Mercado:* {mercado}\n" \
+                            f"📅 *Fecha:* {str(fecha_pedido)}\n\n" \
+                            f"*Detalle de ítems solicitados:*\n"
+                
+                for _, row in df_activos.iterrows():
+                    texto_wsp += f"• {row['PRODUCTO']} | Pedido: {row['PEDIDO']} | Sug: {row['SUGERIDO']}\n"
+                
+                whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+                
+                st.markdown(
+                    f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
+                    unsafe_allow_html=True
+                )
+                
             except Exception as e:
                 error_str = str(e)
                 if "200" in error_str:
                     st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
                     pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
                     nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    
                     st.download_button(
                         label="📥 Descargar Comprobante en PDF",
                         data=pdf_buffer,
                         file_name=nombre_pdf,
                         mime="application/pdf"
+                    )
+                    
+                    df_activos = edited_df[
+                        (edited_df["EXISTENCIA"] > 0) | 
+                        (edited_df["CAMBIOS"] > 0) | 
+                        (edited_df["PEDIDO"] > 0) | 
+                        (edited_df["SUGERIDO"] > 0)
+                    ]
+                    
+                    texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
+                                f"📍 *Mercado:* {mercado}\n" \
+                                f"📅 *Fecha:* {str(fecha_pedido)}\n\n" \
+                                f"*Detalle:*\n"
+                    for _, row in df_activos.iterrows():
+                        texto_wsp += f"• {row['PRODUCTO']} | Pedido: {row['PEDIDO']}\n"
+                    
+                    whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+                    st.markdown(
+                        f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
+                        unsafe_allow_html=True
                     )
                 else:
                     st.error(f"Error al procesar: {error_str}")
