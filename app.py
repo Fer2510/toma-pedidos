@@ -130,8 +130,8 @@ def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, df_enviado)
     
     texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
                 f"📍 *Mercado:* {mercado_val}\n" \
-                f"📅 *Fecha:* {str(fecha_val)}\n\n" \
-                f"   *Vendedor:* {vendedor_val}\n" \
+                f"📅 *Fecha:* {str(fecha_val)}\n" \
+                f"👤 *Vendedor:* {vendedor_val}\n\n" \
                 f"*Detalle de ítems:*\n"
     
     for _, row in df_activos.iterrows():
@@ -189,7 +189,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 )
                 
                 # 3. Preparar texto completo y enlace para WhatsApp
-                texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, edited_df)
+                texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
                 whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
                 
                 st.markdown(
@@ -201,7 +201,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 error_str = str(e)
                 if "200" in error_str:
                     st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
-                    pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
+                    pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
                     nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                     
                     st.download_button(
@@ -211,7 +211,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                         mime="application/pdf"
                     )
                     
-                    texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, edited_df)
+                    texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
                     whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
                     
                     st.markdown(
