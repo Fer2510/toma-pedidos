@@ -11,7 +11,17 @@ import io
 import urllib.parse
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
-
+st.markdown(
+    """
+    <style>
+    /* Ocultar el botón flotante de Manage app y la barra superior */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 st.title("🛒 Sistema de Toma de Pedidos")
 st.markdown("Ingrese el mercado y complete las cantidades para cada producto.")
 
