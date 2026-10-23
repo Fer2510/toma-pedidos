@@ -58,7 +58,7 @@ edited_df = st.data_editor(
 )
 
 # Función para generar el PDF en memoria
-def generar_pdf(df_enviado, mercado_val, fecha_val):
+def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
@@ -78,6 +78,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val):
     elements.append(Paragraph("<b>REPORTE DE PEDIDO - OFICINA PRINCIPAL</b>", title_style))
     elements.append(Paragraph(f"<b>Mercado / Zona:</b> {mercado_val}", normal_style))
     elements.append(Paragraph(f"<b>Fecha:</b> {str(fecha_val)}", normal_style))
+    elements.append(Paragraph(f"<b>Vendedor:</b> {vendedor_val}", normal_style))
     elements.append(Spacer(1, 15))
     
     df_filtrado = df_enviado[
@@ -119,7 +120,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val):
     buffer.seek(0)
     return buffer
 
-def construir_mensaje_whatsapp(mercado_val, fecha_val, df_enviado):
+def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, df_enviado):
     df_activos = df_enviado[
         (df_enviado["EXISTENCIA"] > 0) | 
         (df_enviado["CAMBIOS"] > 0) | 
@@ -130,6 +131,7 @@ def construir_mensaje_whatsapp(mercado_val, fecha_val, df_enviado):
     texto_wsp = f"🛒 *NUEVO PEDIDO - OFICINA PRINCIPAL*\n" \
                 f"📍 *Mercado:* {mercado_val}\n" \
                 f"📅 *Fecha:* {str(fecha_val)}\n\n" \
+                     *Vendedor:* {vendedor_val}\n" \
                 f"*Detalle de ítems:*\n"
     
     for _, row in df_activos.iterrows():
@@ -176,7 +178,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 st.success(f"¡Pedido para **{mercado}** guardado con éxito en la hoja de cálculo!")
                 
                 # 2. Generar el PDF descargable
-                pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido)
+                pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
                 nombre_pdf = f"Pedido_{mercado}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                 
                 st.download_button(
