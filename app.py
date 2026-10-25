@@ -218,7 +218,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             except Exception as e:
                 pass
 
-            # 2. Mostrar éxito y renderizar botones de PDF y WhatsApp
+# 2. Mostrar éxito y renderizar botones de PDF y WhatsApp
             st.success(f"¡Pedido procesado con éxito para **{mercado}**!")
             
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
@@ -227,12 +227,19 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             
             pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
             
+            # Botón de descarga en PDF
             st.download_button(
                 label="📥 Descargar Comprobante en PDF",
                 data=pdf_buffer,
                 file_name=nombre_pdf,
                 mime="application/pdf"
             )
+            
+            # 3. Enlace nativo para WhatsApp (Usando st.link_button para que siempre sea visible)
+            texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
+            whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+            
+            st.link_button("💬 Enviar Pedido por WhatsApp", whatsapp_url, type="secondary")
             
             # 3. Enlace para WhatsApp
             texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
