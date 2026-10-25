@@ -153,7 +153,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     buffer.seek(0)
     return buffer
 
-# Función para subir automáticamente el PDF a Google Drive (con alerta visible de errores)
+# Función para subir automáticamente el PDF a Google Drive evitando el error de cuota de cuenta de servicio
 def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
     try:
         service = build('drive', 'v3', credentials=creds)
@@ -166,15 +166,16 @@ def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
         pdf_buffer.seek(0)
         media = MediaIoBaseUpload(pdf_buffer, mimetype='application/pdf', resumable=True)
         
+        # Se añade supportsAllDrives=True para permitir que la cuenta de servicio suba archivos a carpetas compartidas
         file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         
         return file.get('id')
     except Exception as e:
-        # Esto mostrará el motivo exacto en rojo en tu pantalla de Streamlit
         st.error(f"❌ Error detallado al subir a Google Drive: {e}")
         return None
 
