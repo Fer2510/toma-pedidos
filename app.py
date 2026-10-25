@@ -206,27 +206,30 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 else:
                     nro_pedido = 1
                 
-                # Actualizar celdas explícitamente
+                # Actualizar celdas de encabezado y correlativo
                 sheet.update_cell(2, 3, str(mercado))
                 sheet.update_cell(3, 3, str(fecha_pedido))
                 sheet.update_cell(4, 3, int(nro_pedido))
                 
+                # 2. Actualizar todos los productos de golpe (Batch Update) para máxima velocidad y estabilidad
+                values_to_update = []
                 for index, row in edited_df.iterrows():
-                    fila = 6 + index
-                    sheet.update(f'B{fila}:F{fila}', [[
+                    values_to_update.append([
                         str(row["PRODUCTO"]), 
                         int(row["EXISTENCIA"]), 
                         int(row["CAMBIOS"]), 
                         int(row["PEDIDO"]), 
                         int(row["SUGERIDO"])
-                    ]])
+                    ])
+                
+                sheet.update('B6:F50', values_to_update)
                 
                 st.success(f"¡Google Sheets actualizado con éxito! Nuevo N° de pedido: {nro_pedido:04d}")
                 
             except Exception as e:
                 st.error(f"Error detallado al conectar con Google Sheets: {str(e)}")
 
-            # 2. Renderizar botones de descarga y WhatsApp de manera garantizada
+            # 3. Renderizar botones de descarga y WhatsApp de manera garantizada
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
             merc_clean = mercado.strip().replace(" ", "_")
             nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
