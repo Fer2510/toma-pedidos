@@ -89,12 +89,8 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Inicializar el correlativo en la sesión de Streamlit si no existe
-if 'numero_secuencial' not in st.session_state:
-    st.session_state['numero_secuencial'] = 4
-
 # Función para generar el PDF en memoria
-def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
+def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
@@ -111,7 +107,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     
     normal_style = styles['Normal']
     
-    elements.append(Paragraph(f"<b>REPORTE DE PEDIDO N° {nro_pedido:04d}</b>", title_style))
+    elements.append(Paragraph("<b>REPORTE DE PEDIDO</b>", title_style))
     elements.append(Paragraph(f"<b>Mercado / Zona:</b> {mercado_val}", normal_style))
     elements.append(Paragraph(f"<b>Fecha:</b> {str(fecha_val)}", normal_style))
     elements.append(Paragraph(f"<b>Vendedor:</b> {vendedor_val}", normal_style))
@@ -156,7 +152,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     buffer.seek(0)
     return buffer
 
-def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido, df_enviado):
+def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, df_enviado):
     df_activos = df_enviado[
         (df_enviado["EXISTENCIA"] > 0) | 
         (df_enviado["CAMBIOS"] > 0) | 
@@ -164,7 +160,7 @@ def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido,
         (df_enviado["SUGERIDO"] > 0)
     ]
     
-    texto_wsp = f"🛒 *NUEVO PEDIDO N° {nro_pedido:04d}*\n" \
+    texto_wsp = f"🛒 *NUEVO PEDIDO*\n" \
                 f"📍 *Mercado:* {mercado_val}\n" \
                 f"📅 *Fecha:* {str(fecha_val)}\n" \
                 f"👤 *Vendedor:* {vendedor_val}\n\n" \
@@ -201,9 +197,6 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
         with st.spinner("Actualizando Google Sheets y generando comprobantes..."):
-            st.session_state['numero_secuencial'] += 1
-            nro_pedido = st.session_state['numero_secuencial']
-            
             try:
                 scopes = [
                     "https://www.googleapis.com/auth/spreadsheets",
@@ -219,10 +212,9 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 spreadsheet = client.open_by_key(SPREADSHEET_ID)
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Actualizar celdas de encabezado y forzar el número correlativo
+                # Actualizar celdas de encabezado (Mercado y Fecha)
                 sheet.update_acell('C2', str(mercado))
                 sheet.update_acell('C3', str(fecha_pedido))
-                sheet.update_acell('C4', int(nro_pedido))
                 
                 # 2. Actualización por lotes (Batch Update) de productos
                 values_to_update = []
@@ -237,25 +229,26 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 
                 sheet.update('B6:F50', values_to_update)
                 
-                st.success(f"¡Pedido N° {nro_pedido:04d} guardado con éxito en Google Sheets!")
+                st.success("¡Pedido guardado con éxito en Google Sheets!")
                 
             except Exception as e:
                 if "Response [200]" in str(e):
-                    st.success(f"¡Pedido N° {nro_pedido:04d} guardado con éxito en Google Sheets!")
+                    st.success("¡Pedido guardado con éxito en Google Sheets!")
                 else:
                     st.error(f"Error al conectar con Google Sheets: {str(e)}")
 
             # 3. Generar PDF, preparar WhatsApp y auto-guardar en GitHub
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
             merc_clean = mercado.strip().replace(" ", "_")
-            nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            nombre_pdf = f"Pedido_{merc_clean}_{vend_clean}_{timestamp_str}.pdf"
             
-            pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
+            pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
             
             # Subida silenciosa a GitHub si están configurados los secretos
             guardar_pdf_en_github(pdf_buffer, nombre_pdf)
             
-            texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
+            texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
             whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
             
             # Renderizado horizontal de botones
