@@ -153,7 +153,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     buffer.seek(0)
     return buffer
 
-# Función para subir automáticamente el PDF a Google Drive
+# Función para subir automáticamente el PDF a Google Drive (con alerta visible de errores)
 def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
     try:
         service = build('drive', 'v3', credentials=creds)
@@ -174,7 +174,8 @@ def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
         
         return file.get('id')
     except Exception as e:
-        print(f"Error al subir a Drive: {e}")
+        # Esto mostrará el motivo exacto en rojo en tu pantalla de Streamlit
+        st.error(f"❌ Error detallado al subir a Google Drive: {e}")
         return None
 
 def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido, df_enviado):
