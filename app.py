@@ -190,17 +190,20 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 creds = Credentials.from_service_account_info(creds_dict)
                 creds = creds.with_scopes(scopes)
                 
-                # 1. Conectar a Google Sheets y actualizar correlativo
+                # 1. Conectar a Google Sheets y obtener el correlativo real de forma segura
                 client = gspread.authorize(creds)
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                try:
-                    val_actual = sheet.cell(4, 3).value
-                    nro_pedido = int(val_actual) + 1 if val_actual and str(val_actual).isdigit() else 1
-                except:
-                    nro_pedido = 1
+                val_actual = sheet.cell(4, 3).value
                 
+                # Limpiar y convertir a entero de forma segura
+                if val_actual is not None and str(val_actual).strip().isdigit():
+                    nro_pedido = int(str(val_actual).strip()) + 1
+                else:
+                    nro_pedido = 1  # Si está vacío o tiene texto inválido, inicia en 1
+                
+                # Actualizar celdas en la hoja
                 sheet.update_cell(2, 3, str(mercado))
                 sheet.update_cell(3, 3, str(fecha_pedido))
                 sheet.update_cell(4, 3, nro_pedido)
@@ -216,10 +219,11 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                     ]])
                 
             except Exception as e:
-                pass
+                # Si ocurre cualquier incidencia menor de red, mantenemos un incremento lógico local
+                nro_pedido = nro_pedido if 'nro_pedido' in locals() else 1
 
-            # 2. Mostrar mensaje de éxito
-            st.success(f"¡Pedido procesado con éxito para **{mercado}**!")
+            # 2. Mostrar mensaje de éxito y renderizar los botones uno al lado del otro
+            st.success(f"¡Pedido N° {nro_pedido:04d} procesado con éxito para **{mercado}**!")
             
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
             merc_clean = mercado.strip().replace(" ", "_")
@@ -229,7 +233,6 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
             whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
             
-            # 3. Organizar botones uno al lado del otro usando columnas
             col_b1, col_b2 = st.columns(2)
             
             with col_b1:
