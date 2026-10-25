@@ -9,8 +9,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
 import urllib.parse
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
@@ -153,32 +151,6 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     buffer.seek(0)
     return buffer
 
-# Función para subir automáticamente el PDF a Google Drive evitando el error de cuota de cuenta de servicio
-def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
-    try:
-        service = build('drive', 'v3', credentials=creds)
-        
-        file_metadata = {
-            'name': nombre_archivo,
-            'parents': [folder_id]
-        }
-        
-        pdf_buffer.seek(0)
-        media = MediaIoBaseUpload(pdf_buffer, mimetype='application/pdf', resumable=True)
-        
-        # Se añade supportsAllDrives=True para permitir que la cuenta de servicio suba archivos a carpetas compartidas
-        file = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id',
-            supportsAllDrives=True
-        ).execute()
-        
-        return file.get('id')
-    except Exception as e:
-        st.error(f"❌ Error detallado al subir a Google Drive: {e}")
-        return None
-
 def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido, df_enviado):
     df_activos = df_enviado[
         (df_enviado["EXISTENCIA"] > 0) | 
@@ -206,17 +178,16 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Actualizando Google Sheets, respaldando en Drive y generando comprobantes..."):
+        with st.spinner("Actualizando Google Sheets y generando comprobantes..."):
             try:
                 scopes = [
-                    "https://www.googleapis.com/auth/spreadsheets",
-                    "https://www.googleapis.com/auth/drive"
+                    "https://www.googleapis.com/auth/spreadsheets"
                 ]
                 creds_dict = dict(st.secrets["gcp_service_account"])
                 creds = Credentials.from_service_account_info(creds_dict)
                 creds = creds.with_scopes(scopes)
                 
-                # 1. Conectar a Google Sheets
+                # 1. Conectar a Google Sheets y actualizar correlativo
                 client = gspread.authorize(creds)
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
@@ -241,20 +212,14 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                         int(row["SUGERIDO"])
                     ]])
                 
-                st.success(f"¡Pedido N° {nro_pedido:04d} para **{mercado}** guardado con éxito!")
+                st.success(f"¡Pedido N° {nro_pedido:04d} para **{mercado}** guardado con éxito en Google Sheets!")
                 
-                # 2. Configuración con tu ID de carpeta asignado automáticamente
-                FOLDER_ID = "162rUBUDTFb04W4GJR-dDdX5-6M8w62jJ"
-                
+                # 2. Generar PDF descargable
                 vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
                 merc_clean = mercado.strip().replace(" ", "_")
                 nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
                 
                 pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
-                
-                id_archivo_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds, FOLDER_ID)
-                if id_archivo_drive:
-                    st.info("☁️ Comprobante respaldado automáticamente en Google Drive.")
                 
                 st.download_button(
                     label="📥 Descargar Comprobante en PDF",
