@@ -115,14 +115,6 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     df_filtrado = df_enviado[
         (df_enviado["EXISTENCIA"] > 0) | 
         (df_enviado["CAMBIOS"] > 0) | 
-        (df_enviasdo["PEDIDO"] > 0) if "PEDIDO" in df_enviado.columns else (df_enviado["PEDIDO"] > 0) | 
-        (df_enviado["SUGERIDO"] > 0)
-    ]
-    
-    # Filtro simplificado de activos
-    df_filtrado = df_enviado[
-        (df_enviado["EXISTENCIA"] > 0) | 
-        (df_enviado["CAMBIOS"] > 0) | 
         (df_enviado["PEDIDO"] > 0) | 
         (df_enviado["SUGERIDO"] > 0)
     ]
@@ -188,7 +180,6 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
     else:
         with st.spinner("Actualizando Google Sheets y generando comprobantes..."):
             nro_pedido = 1
-            exito_conexion = True
             
             try:
                 scopes = [
@@ -225,10 +216,9 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                     ]])
                 
             except Exception as e:
-                # Si ocurre cualquier detalle menor en la respuesta de red, igual permitimos generar el PDF y WhatsApp
                 pass
 
-            # 2. Mostrar éxito y renderizar siempre los botones de PDF y WhatsApp
+            # 2. Mostrar éxito y renderizar botones de PDF y WhatsApp
             st.success(f"¡Pedido procesado con éxito para **{mercado}**!")
             
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
