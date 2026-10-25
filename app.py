@@ -9,6 +9,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
 import urllib.parse
+from github import Github
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
@@ -88,11 +89,11 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
-# Inicializar el correlativo en la sesión si no existe
+# Inicializar el correlativo en la sesión de Streamlit si no existe
 if 'numero_secuencial' not in st.session_state:
-    st.session_state['numero_secuencial'] = 5  # Empieza en 5 para continuar desde donde estabas (o cámbialo a 1)
+    st.session_state['numero_secuencial'] = 4  # Ajustado para continuar en 5 en el primer envío
 
-# Función para generar el PDF en memoria incluyendo el número de pedido
+# Función para generar el PDF en memoria
 def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -142,114 +143,4 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('ALIGN', (0,1), (0,-1), 'LEFT'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 10),
-        ('BOTTOMPADDING', (0,0), (-1,0), 6),
-        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f1f8e9')),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#c8e6c9')),
-        ('FONTSIZE', (0,1), (-1,-1), 9)
-    ]))
-    
-    elements.append(t)
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
-
-def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido, df_enviado):
-    df_activos = df_enviado[
-        (df_enviado["EXISTENCIA"] > 0) | 
-        (df_enviado["CAMBIOS"] > 0) | 
-        (df_enviado["PEDIDO"] > 0) | 
-        (df_enviado["SUGERIDO"] > 0)
-    ]
-    
-    texto_wsp = f"🛒 *NUEVO PEDIDO N° {nro_pedido:04d}*\n" \
-                f"📍 *Mercado:* {mercado_val}\n" \
-                f"📅 *Fecha:* {str(fecha_val)}\n" \
-                f"👤 *Vendedor:* {vendedor_val}\n\n" \
-                f"*Detalle de ítems:*\n"
-    
-    for _, row in df_activos.iterrows():
-        texto_wsp += f"• *{row['PRODUCTO']}*\n" \
-                     f"  - Existencia: {row['EXISTENCIA']}\n" \
-                     f"  - Cambios: {row['CAMBIOS']}\n" \
-                     f"  - Pedido: {row['PEDIDO']}\n" \
-                     f"  - Sugerido: {row['SUGERIDO']}\n\n"
-                     
-    return texto_wsp
-
-if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
-    if not mercado:
-        st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
-    else:
-        with st.spinner("Actualizando Google Sheets y generando comprobantes..."):
-            # Incrementar el número secuencial garantizado
-            st.session_state['numero_secuencial'] += 1
-            nro_pedido = st.session_state['numero_secuencial']
-            
-            try:
-                scopes = [
-                    "https://www.googleapis.com/auth/spreadsheets",
-                    "https://www.googleapis.com/auth/drive.file"
-                ]
-                creds_dict = dict(st.secrets["gcp_service_account"])
-                creds = Credentials.from_service_account_info(creds_dict)
-                creds = creds.with_scopes(scopes)
-                
-                # 1. Conectar a Google Sheets
-                client = gspread.authorize(creds)
-                spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
-                sheet = spreadsheet.worksheet("Matriz de Pedidos")
-                
-                # Actualizar celdas de encabezado y forzar el nuevo número de pedido
-                sheet.update_acell('C2', str(mercado))
-                sheet.update_acell('C3', str(fecha_pedido))
-                sheet.update_acell('C4', int(nro_pedido))
-                
-                # 2. Actualización por lotes (Batch Update) de productos
-                values_to_update = []
-                for index, row in edited_df.iterrows():
-                    values_to_update.append([
-                        str(row["PRODUCTO"]), 
-                        int(row["EXISTENCIA"]), 
-                        int(row["CAMBIOS"]), 
-                        int(row["PEDIDO"]), 
-                        int(row["SUGERIDO"])
-                    ])
-                
-                sheet.update('B6:F50', values_to_update)
-                
-                st.success(f"¡Pedido N° {nro_pedido:04d} guardado con éxito en Google Sheets!")
-                
-            except Exception as e:
-                if "Response [200]" in str(e):
-                    st.success(f"¡Pedido N° {nro_pedido:04d} guardado con éxito en Google Sheets!")
-                else:
-                    st.error(f"Error al procesar: {str(e)}")
-
-            # 3. Renderizar botones de descarga y WhatsApp de manera garantizada
-            vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
-            merc_clean = mercado.strip().replace(" ", "_")
-            nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
-            
-            pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
-            texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
-            whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
-            
-            col_b1, col_b2 = st.columns(2)
-            
-            with col_b1:
-                st.download_button(
-                    label="📥 Descargar PDF",
-                    data=pdf_buffer,
-                    file_name=nombre_pdf,
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-                
-            with col_b2:
-                st.link_button(
-                    label="💬 Enviar por WhatsApp",
-                    url=whatsapp_url,
-                    use_container_width=True
-                )
+        ('FONTNAME', (0,0), (-1,0), '
