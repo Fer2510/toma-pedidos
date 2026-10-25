@@ -9,6 +9,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
 import urllib.parse
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
@@ -151,6 +153,30 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     doc.build(elements)
     buffer.seek(0)
     return buffer
+    
+    def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
+    try:
+        service = build('drive', 'v3', credentials=creds)
+        
+        file_metadata = {
+            'name': nombre_archivo,
+            'parents': [folder_id]
+        }
+        
+        # Reiniciar el puntero del buffer de memoria del PDF
+        pdf_buffer.seek(0)
+        media = MediaIoBaseUpload(pdf_buffer, mimetype='application/pdf', resumable=True)
+        
+        file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id'
+        ).execute()
+        
+        return file.get('id')
+    except Exception as e:
+        print(f"Error al subir a Drive: {e}")
+        return None
 
 def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido, df_enviado):
     df_activos = df_enviado[
@@ -218,6 +244,28 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                     ]])
                 
                 st.success(f"¡Pedido N° {nro_pedido:04d} para **{mercado}** guardado con éxito!")
+
+                # ID de tu carpeta compartida en Google Drive
+FOLDER_ID = "162rUBUDTFb04W4GJR-dDdX5-6M8w62jJ" 
+
+# Generar el PDF descargable
+vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
+merc_clean = mercado.strip().replace(" ", "_")
+nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
+
+pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
+
+# Subir automáticamente a Google Drive
+id_archivo_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds, FOLDER_ID)
+if id_archivo_drive:
+    st.info("☁️ Comprobante respaldado automáticamente en Google Drive.")
+
+st.download_button(
+    label="📥 Descargar Comprobante en PDF",
+    data=pdf_buffer,
+    file_name=nombre_pdf,
+    mime="application/pdf"
+)
                 
                 # 2. Generar el PDF descargable con el número de pedido
                 vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
