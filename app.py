@@ -155,13 +155,6 @@ def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido,
     df_activos = df_enviado[
         (df_enviado["EXISTENCIA"] > 0) | 
         (df_enviado["CAMBIOS"] > 0) | 
-        (df_enusiado["PEDIDO"] > 0) if "PEDIDO" in df_enviado.columns else (df_enviado["PEDIDO"] > 0) | 
-        (df_enviado["SUGERIDO"] > 0)
-    ]
-    
-    df_activos = df_enviado[
-        (df_enviado["EXISTENCIA"] > 0) | 
-        (df_enviado["CAMBIOS"] > 0) | 
         (df_enviado["PEDIDO"] > 0) | 
         (df_enviado["SUGERIDO"] > 0)
     ]
@@ -204,10 +197,8 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 
                 # Leer la celda C4 asegurando extracción limpia
                 val_actual = sheet.cell(4, 3).value
-                st.write(f"DEBUG - Valor leído en C4: {repr(val_actual)}") # Mensaje temporal para visualizar en pantalla
                 
                 if val_actual is not None and str(val_actual).strip() != "":
-                    # Intentar convertir limpiando cualquier formato de número o texto
                     try:
                         nro_pedido = int(float(str(val_actual).strip())) + 1
                     except:
