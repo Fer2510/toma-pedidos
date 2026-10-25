@@ -195,23 +195,23 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Leer la celda C4 usando notación A1 de manera segura
-                try:
-                    val_actual = sheet.acell('C4').value
-                except:
-                    val_actual = None
+                # Obtener el valor actual de C4 forzando conversión a entero
+                val_actual = sheet.acell('C4').value
                 
-                if val_actual is not None and str(val_actual).strip().isdigit():
-                    nro_pedido = int(str(val_actual).strip()) + 1
+                if val_actual is not None and str(val_actual).strip() != "":
+                    try:
+                        nro_pedido = int(float(str(val_actual).strip())) + 1
+                    except:
+                        nro_pedido = 1
                 else:
                     nro_pedido = 1
                 
-                # Actualizar celdas de encabezado y correlativo usando notación A1
+                # Actualizar celdas explícitamente limpiando formato con valor plano
                 sheet.update_acell('C2', str(mercado))
                 sheet.update_acell('C3', str(fecha_pedido))
                 sheet.update_acell('C4', int(nro_pedido))
                 
-                # 2. Actualización por lotes (Batch Update) para los productos
+                # 2. Actualización por lotes (Batch Update) de productos
                 values_to_update = []
                 for index, row in edited_df.iterrows():
                     values_to_update.append([
