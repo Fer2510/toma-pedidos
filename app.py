@@ -255,4 +255,24 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                     st.info("☁️ Comprobante respaldado automáticamente en Google Drive.")
                 
                 st.download_button(
-                    label="📥 Descargar Comprobante en PDF
+                    label="📥 Descargar Comprobante en PDF",
+                    data=pdf_buffer,
+                    file_name=nombre_pdf,
+                    mime="application/pdf"
+                )
+                
+                # 3. Enlace para WhatsApp
+                texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
+                whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+                
+                st.markdown(
+                    f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
+                    unsafe_allow_html=True
+                )
+                
+            except Exception as e:
+                error_str = str(e)
+                if "200" in error_str:
+                    st.success("¡Pedido guardado con éxito en la hoja de cálculo!")
+                else:
+                    st.error(f"Error al procesar: {error_str}")
