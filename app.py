@@ -218,7 +218,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             except Exception as e:
                 pass
 
-            # 2. Mostrar éxito y renderizar botones limpios de PDF y WhatsApp
+            # 2. Mostrar mensaje de éxito
             st.success(f"¡Pedido procesado con éxito para **{mercado}**!")
             
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
@@ -226,19 +226,24 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
             
             pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
-            
-            st.download_button(
-                label="📥 Descargar Comprobante en PDF",
-                data=pdf_buffer,
-                file_name=nombre_pdf,
-                mime="application/pdf"
-            )
-            
-            # 3. Único botón de WhatsApp con estilo visual limpio
             texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
             whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
             
-            st.markdown(
-                f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
-                unsafe_allow_html=True
-            )
+            # 3. Organizar botones uno al lado del otro usando columnas
+            col_b1, col_b2 = st.columns(2)
+            
+            with col_b1:
+                st.download_button(
+                    label="📥 Descargar PDF",
+                    data=pdf_buffer,
+                    file_name=nombre_pdf,
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+                
+            with col_b2:
+                st.link_button(
+                    label="💬 Enviar por WhatsApp",
+                    url=whatsapp_url,
+                    use_container_width=True
+                )
