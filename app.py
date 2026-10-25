@@ -180,16 +180,13 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
     else:
         with st.spinner("Actualizando Google Sheets y generando comprobantes..."):
             try:
-scopes = [
+                scopes = [
                     "https://www.googleapis.com/auth/spreadsheets",
                     "https://www.googleapis.com/auth/drive.file"
                 ]
                 creds_dict = dict(st.secrets["gcp_service_account"])
                 creds = Credentials.from_service_account_info(creds_dict)
                 creds = creds.with_scopes(scopes)
-                
-                # 1. Conectar a Google Sheets y actualizar correlativo
-                client = gspread.authorize(creds)
                 
                 # 1. Conectar a Google Sheets y actualizar correlativo
                 client = gspread.authorize(creds)
