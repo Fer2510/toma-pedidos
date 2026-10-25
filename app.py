@@ -155,6 +155,13 @@ def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, nro_pedido,
     df_activos = df_enviado[
         (df_enviado["EXISTENCIA"] > 0) | 
         (df_enviado["CAMBIOS"] > 0) | 
+        (df_enusiado["PEDIDO"] > 0) if "PEDIDO" in df_enviado.columns else (df_enviado["PEDIDO"] > 0) | 
+        (df_enviado["SUGERIDO"] > 0)
+    ]
+    
+    df_activos = df_enviado[
+        (df_enviado["EXISTENCIA"] > 0) | 
+        (df_enviado["CAMBIOS"] > 0) | 
         (df_enviado["PEDIDO"] > 0) | 
         (df_enviado["SUGERIDO"] > 0)
     ]
@@ -190,23 +197,28 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 creds = Credentials.from_service_account_info(creds_dict)
                 creds = creds.with_scopes(scopes)
                 
-                # 1. Conectar a Google Sheets y obtener el correlativo real de forma segura
+                # 1. Conectar a Google Sheets
                 client = gspread.authorize(creds)
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
+                # Leer la celda C4 asegurando extracción limpia
                 val_actual = sheet.cell(4, 3).value
+                st.write(f"DEBUG - Valor leído en C4: {repr(val_actual)}") # Mensaje temporal para visualizar en pantalla
                 
-                # Limpiar y convertir a entero de forma segura
-                if val_actual is not None and str(val_actual).strip().isdigit():
-                    nro_pedido = int(str(val_actual).strip()) + 1
+                if val_actual is not None and str(val_actual).strip() != "":
+                    # Intentar convertir limpiando cualquier formato de número o texto
+                    try:
+                        nro_pedido = int(float(str(val_actual).strip())) + 1
+                    except:
+                        nro_pedido = 1
                 else:
-                    nro_pedido = 1  # Si está vacío o tiene texto inválido, inicia en 1
+                    nro_pedido = 1
                 
-                # Actualizar celdas en la hoja
+                # Actualizar celdas explícitamente
                 sheet.update_cell(2, 3, str(mercado))
                 sheet.update_cell(3, 3, str(fecha_pedido))
-                sheet.update_cell(4, 3, nro_pedido)
+                sheet.update_cell(4, 3, int(nro_pedido))
                 
                 for index, row in edited_df.iterrows():
                     fila = 6 + index
@@ -218,13 +230,12 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                         int(row["SUGERIDO"])
                     ]])
                 
+                st.success(f"¡Google Sheets actualizado con éxito! Nuevo N° de pedido: {nro_pedido:04d}")
+                
             except Exception as e:
-                # Si ocurre cualquier incidencia menor de red, mantenemos un incremento lógico local
-                nro_pedido = nro_pedido if 'nro_pedido' in locals() else 1
+                st.error(f"Error detallado al conectar con Google Sheets: {str(e)}")
 
-            # 2. Mostrar mensaje de éxito y renderizar los botones uno al lado del otro
-            st.success(f"¡Pedido N° {nro_pedido:04d} procesado con éxito para **{mercado}**!")
-            
+            # 2. Renderizar botones de descarga y WhatsApp de manera garantizada
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
             merc_clean = mercado.strip().replace(" ", "_")
             nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
