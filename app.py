@@ -190,7 +190,7 @@ def guardar_pdf_en_github(pdf_buffer, nombre_archivo):
                 branch="main"
             )
     except Exception as e:
-        print(f"Subida opcional a GitHub omitida: {e}")
+        print(f"Subida automática a GitHub omitida: {e}")
 
 if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
     if not mercado:
@@ -206,13 +206,13 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 creds = Credentials.from_service_account_info(creds_dict)
                 creds = creds.with_scopes(scopes)
                 
-                # 1. Conectar a Google Sheets directamente por su ID único
+                # 1. Conectar a Google Sheets por su ID único
                 client = gspread.authorize(creds)
                 SPREADSHEET_ID = "1ojTp9-fcSIJRUHVlIcL7bQlVSaJ9vauIFYUvpz1lo4w"
                 spreadsheet = client.open_by_key(SPREADSHEET_ID)
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Actualizar celdas de encabezado (Mercado y Fecha)
+                # Actualizar celdas de encabezado
                 sheet.update_acell('C2', str(mercado))
                 sheet.update_acell('C3', str(fecha_pedido))
                 
@@ -237,7 +237,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 else:
                     st.error(f"Error al conectar con Google Sheets: {str(e)}")
 
-            # 3. Generar PDF, preparar WhatsApp y auto-guardar en GitHub
+            # 3. Generar PDF, preparar WhatsApp y auto-guardar en GitHub de forma silenciosa
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
             merc_clean = mercado.strip().replace(" ", "_")
             timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -245,7 +245,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             
             pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
             
-            # Subida silenciosa a GitHub si están configurados los secretos
+            # Subida automática y silenciosa a la carpeta 'pdf_guardados/' en GitHub
             guardar_pdf_en_github(pdf_buffer, nombre_pdf)
             
             texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
