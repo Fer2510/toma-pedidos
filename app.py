@@ -108,7 +108,6 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     
     normal_style = styles['Normal']
     
-    # Encabezados del reporte con Correlativo
     elements.append(Paragraph(f"<b>REPORTE DE PEDIDO N° {nro_pedido:04d}</b>", title_style))
     elements.append(Paragraph(f"<b>Mercado / Zona:</b> {mercado_val}", normal_style))
     elements.append(Paragraph(f"<b>Fecha:</b> {str(fecha_val)}", normal_style))
@@ -153,8 +152,9 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     doc.build(elements)
     buffer.seek(0)
     return buffer
-    
-    def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
+
+# Función para subir automáticamente el PDF a Google Drive
+def subir_pdf_a_drive(pdf_buffer, nombre_archivo, creds, folder_id):
     try:
         service = build('drive', 'v3', credentials=creds)
         
@@ -163,7 +163,6 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
             'parents': [folder_id]
         }
         
-        # Reiniciar el puntero del buffer de memoria del PDF
         pdf_buffer.seek(0)
         media = MediaIoBaseUpload(pdf_buffer, mimetype='application/pdf', resumable=True)
         
@@ -205,7 +204,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
     if not mercado:
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
-        with st.spinner("Actualizando Google Sheets y generando correlativo..."):
+        with st.spinner("Actualizando Google Sheets, respaldando en Drive y generando comprobantes..."):
             try:
                 scopes = [
                     "https://www.googleapis.com/auth/spreadsheets",
@@ -220,19 +219,16 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Obtener el número correlativo actual de la celda C4 (si está vacía, empieza en 1)
                 try:
                     val_actual = sheet.cell(4, 3).value
                     nro_pedido = int(val_actual) + 1 if val_actual and str(val_actual).isdigit() else 1
                 except:
                     nro_pedido = 1
                 
-                # Guardar datos básicos y el nuevo correlativo en C4
                 sheet.update_cell(2, 3, str(mercado))
                 sheet.update_cell(3, 3, str(fecha_pedido))
                 sheet.update_cell(4, 3, nro_pedido)
                 
-                # Actualizar la matriz de productos
                 for index, row in edited_df.iterrows():
                     fila = 6 + index
                     sheet.update(f'B{fila}:F{fila}', [[
@@ -244,56 +240,19 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                     ]])
                 
                 st.success(f"¡Pedido N° {nro_pedido:04d} para **{mercado}** guardado con éxito!")
-
-                # ID de tu carpeta compartida en Google Drive
-FOLDER_ID = "162rUBUDTFb04W4GJR-dDdX5-6M8w62jJ" 
-
-# Generar el PDF descargable
-vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
-merc_clean = mercado.strip().replace(" ", "_")
-nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
-
-pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
-
-# Subir automáticamente a Google Drive
-id_archivo_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds, FOLDER_ID)
-if id_archivo_drive:
-    st.info("☁️ Comprobante respaldado automáticamente en Google Drive.")
-
-st.download_button(
-    label="📥 Descargar Comprobante en PDF",
-    data=pdf_buffer,
-    file_name=nombre_pdf,
-    mime="application/pdf"
-)
                 
-                # 2. Generar el PDF descargable con el número de pedido
+                # 2. Configuración con tu ID de carpeta asignado automáticamente
+                FOLDER_ID = "162rUBUDTFb04W4GJR-dDdX5-6M8w62jJ"
+                
                 vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
                 merc_clean = mercado.strip().replace(" ", "_")
                 nombre_pdf = f"Pedido_{nro_pedido:04d}_{merc_clean}_{vend_clean}.pdf"
                 
                 pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor, nro_pedido)
                 
+                id_archivo_drive = subir_pdf_a_drive(pdf_buffer, nombre_pdf, creds, FOLDER_ID)
+                if id_archivo_drive:
+                    st.info("☁️ Comprobante respaldado automáticamente en Google Drive.")
+                
                 st.download_button(
-                    label="📥 Descargar Comprobante en PDF",
-                    data=pdf_buffer,
-                    file_name=nombre_pdf,
-                    mime="application/pdf"
-                )
-                
-                # 3. Preparar texto y enlace para WhatsApp con el correlativo
-                texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, nro_pedido, edited_df)
-                whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
-                
-                st.markdown(
-                    f'<br><a href="{whatsapp_url}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#25d366;color:white;text-align:center;text-decoration:none;font-weight:bold;border-radius:5px;">💬 Enviar Pedido por WhatsApp</a><br>',
-                    unsafe_allow_html=True
-                )
-                
-            except Exception as e:
-                error_str = str(e)
-                if "200" in error_str:
-                    # En caso de error de respuesta HTTP 200 de gspread pero con éxito interno
-                    st.success("¡Pedido guardado con éxito en la hoja de cálculo!")
-                else:
-                    st.error(f"Error al procesar: {error_str}")
+                    label="📥 Descargar Comprobante en PDF
