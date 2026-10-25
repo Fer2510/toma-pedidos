@@ -88,6 +88,10 @@ edited_df = st.data_editor(
     hide_index=True
 )
 
+# Inicializar el correlativo en la sesión si no existe
+if 'numero_secuencial' not in st.session_state:
+    st.session_state['numero_secuencial'] = 5  # Empieza en 5 para continuar desde donde estabas (o cámbialo a 1)
+
 # Función para generar el PDF en memoria incluyendo el número de pedido
 def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val, nro_pedido):
     buffer = io.BytesIO()
@@ -179,7 +183,9 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
         st.error("Por favor, ingresa el nombre del MERCADO antes de enviar.")
     else:
         with st.spinner("Actualizando Google Sheets y generando comprobantes..."):
-            nro_pedido = 1
+            # Incrementar el número secuencial garantizado
+            st.session_state['numero_secuencial'] += 1
+            nro_pedido = st.session_state['numero_secuencial']
             
             try:
                 scopes = [
@@ -195,18 +201,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Obtener el valor actual de C4 forzando conversión a entero
-                val_actual = sheet.acell('C4').value
-                
-                if val_actual is not None and str(val_actual).strip() != "":
-                    try:
-                        nro_pedido = int(float(str(val_actual).strip())) + 1
-                    except:
-                        nro_pedido = 1
-                else:
-                    nro_pedido = 1
-                
-                # Actualizar celdas explícitamente limpiando formato con valor plano
+                # Actualizar celdas de encabezado y forzar el nuevo número de pedido
                 sheet.update_acell('C2', str(mercado))
                 sheet.update_acell('C3', str(fecha_pedido))
                 sheet.update_acell('C4', int(nro_pedido))
