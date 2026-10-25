@@ -1,6 +1,5 @@
 streamlit
 pandas
 gspread
-google-auth
 reportlab
-google-api-python-client
+PyGithub
