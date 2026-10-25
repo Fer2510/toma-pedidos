@@ -195,23 +195,23 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 spreadsheet = client.open("Consolidado_Pedidos_Google_Forms")
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Leer la celda C4 asegurando extracción limpia
-                val_actual = sheet.cell(4, 3).value
+                # Leer la celda C4 usando notación A1 de manera segura
+                try:
+                    val_actual = sheet.acell('C4').value
+                except:
+                    val_actual = None
                 
-                if val_actual is not None and str(val_actual).strip() != "":
-                    try:
-                        nro_pedido = int(float(str(val_actual).strip())) + 1
-                    except:
-                        nro_pedido = 1
+                if val_actual is not None and str(val_actual).strip().isdigit():
+                    nro_pedido = int(str(val_actual).strip()) + 1
                 else:
                     nro_pedido = 1
                 
-                # Actualizar celdas de encabezado y correlativo
-                sheet.update_cell(2, 3, str(mercado))
-                sheet.update_cell(3, 3, str(fecha_pedido))
-                sheet.update_cell(4, 3, int(nro_pedido))
+                # Actualizar celdas de encabezado y correlativo usando notación A1
+                sheet.update_acell('C2', str(mercado))
+                sheet.update_acell('C3', str(fecha_pedido))
+                sheet.update_acell('C4', int(nro_pedido))
                 
-                # 2. Actualizar todos los productos de golpe (Batch Update)
+                # 2. Actualización por lotes (Batch Update) para los productos
                 values_to_update = []
                 for index, row in edited_df.iterrows():
                     values_to_update.append([
@@ -224,12 +224,9 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 
                 sheet.update('B6:F50', values_to_update)
                 
-                st.success(f"¡Google Sheets actualizado con éxito! Nuevo N° de pedido: {nro_pedido:04d}")
+                st.success(f"¡Pedido N° {nro_pedido:04d} guardado con éxito en Google Sheets!")
                 
-            except gspread.exceptions.APIError as e:
-                st.error(f"Error de API de Google Sheets: {str(e)}")
             except Exception as e:
-                # Ignorar si el error es solo la respuesta de éxito Response [200]
                 if "Response [200]" in str(e):
                     st.success(f"¡Pedido N° {nro_pedido:04d} guardado con éxito en Google Sheets!")
                 else:
