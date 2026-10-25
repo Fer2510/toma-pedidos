@@ -187,8 +187,13 @@ def guardar_pdf_en_github(pdf_buffer, nombre_archivo):
                 path=ruta_archivo,
                 message=f"Auto-guardado comprobante {nombre_archivo}",
                 content=contenido_bytes,
-                branch="main"
+                branch="main"  # Cámbialo a 'master' si tu rama se llama así
             )
+            st.success("📁 ¡PDF guardado automáticamente en GitHub con éxito!")
+        else:
+            st.warning("⚠️ No se encontraron GITHUB_TOKEN o GITHUB_REPO en los secretos de Streamlit.")
+    except Exception as e:
+        st.error(f"❌ Error al subir a GitHub: {str(e)}")
     except Exception as e:
         print(f"Subida automática a GitHub omitida: {e}")
 
