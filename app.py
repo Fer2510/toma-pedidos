@@ -211,7 +211,7 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 sheet.update_cell(3, 3, str(fecha_pedido))
                 sheet.update_cell(4, 3, int(nro_pedido))
                 
-                # 2. Actualizar todos los productos de golpe (Batch Update) para máxima velocidad y estabilidad
+                # 2. Actualizar todos los productos de golpe (Batch Update)
                 values_to_update = []
                 for index, row in edited_df.iterrows():
                     values_to_update.append([
@@ -226,8 +226,14 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 
                 st.success(f"¡Google Sheets actualizado con éxito! Nuevo N° de pedido: {nro_pedido:04d}")
                 
+            except gspread.exceptions.APIError as e:
+                st.error(f"Error de API de Google Sheets: {str(e)}")
             except Exception as e:
-                st.error(f"Error detallado al conectar con Google Sheets: {str(e)}")
+                # Ignorar si el error es solo la respuesta de éxito Response [200]
+                if "Response [200]" in str(e):
+                    st.success(f"¡Pedido N° {nro_pedido:04d} guardado con éxito en Google Sheets!")
+                else:
+                    st.error(f"Error al procesar: {str(e)}")
 
             # 3. Renderizar botones de descarga y WhatsApp de manera garantizada
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
