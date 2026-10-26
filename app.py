@@ -73,7 +73,7 @@ edited_df = st.data_editor(
     num_rows="fixed",
     use_container_width=True,
     hide_index=True,
-    height=500
+    height=650
 )
 
 # Función para generar el PDF en memoria (incluyendo todos los productos)
