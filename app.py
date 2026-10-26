@@ -67,7 +67,6 @@ for p in productos:
 
 df_input = pd.DataFrame(data)
 
-# Se agrega height=500 para evitar que la pantalla se congelar o salte al hacer scroll
 edited_df = st.data_editor(
     df_input,
     num_rows="fixed",
@@ -132,7 +131,6 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     return buffer
 
 def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, df_enviado):
-    # Enviar todos los productos
     df_activos = df_enviado
     
     texto_wsp = f"🛒 *NUEVO PEDIDO*\n" \
@@ -149,6 +147,9 @@ def construir_mensaje_whatsapp(mercado_val, fecha_val, vendedor_val, df_enviado)
                      f"  - Sugerido: {row['SUGERIDO']}\n\n"
                      
     return texto_wsp
+
+def convertir_df_a_csv(df):
+    return df.to_csv(index=False).encode('utf-8-sig')
 
 def guardar_pdf_en_github(pdf_buffer, nombre_archivo):
     try:
@@ -215,13 +216,15 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 else:
                     st.error(f"Error al conectar con Google Sheets: {str(e)}")
 
-            # 3. Generar PDF, preparar WhatsApp y auto-guardar en GitHub
+            # 3. Generar archivos (PDF y CSV), preparar WhatsApp y auto-guardar en GitHub
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
             merc_clean = mercado.strip().replace(" ", "_")
             timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
             nombre_pdf = f"Pedido_{merc_clean}_{vend_clean}_{timestamp_str}.pdf"
+            nombre_csv = f"Pedido_{merc_clean}_{vend_clean}_{timestamp_str}.csv"
             
             pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
+            csv_bytes = convertir_df_a_csv(edited_df)
             
             # Subida automática a la carpeta 'pdf_guardados/' en GitHub
             guardar_pdf_en_github(pdf_buffer, nombre_pdf)
@@ -229,21 +232,8 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
             whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
             
-            # Renderizado horizontal de botones
-            col_b1, col_b2 = st.columns(2)
+            # Renderizado horizontal de 3 botones
+            col_b1, col_b2, col_b3 = st.columns(3)
             
             with col_b1:
                 st.download_button(
-                    label="📥 Descargar PDF",
-                    data=pdf_buffer,
-                    file_name=nombre_pdf,
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-                
-            with col_b2:
-                st.link_button(
-                    label="💬 Enviar por WhatsApp",
-                    url=whatsapp_url,
-                    use_container_width=True
-                )
