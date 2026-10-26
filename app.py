@@ -75,7 +75,6 @@ edited_df = st.data_editor(
     height=650
 )
 
-# Función para generar el PDF en memoria (incluyendo todos los productos)
 def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -185,17 +184,14 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 creds = Credentials.from_service_account_info(creds_dict)
                 creds = creds.with_scopes(scopes)
                 
-                # 1. Conectar a Google Sheets por su ID único
                 client = gspread.authorize(creds)
                 SPREADSHEET_ID = "1ojTp9-fcSIJRUHVlIcL7bQlVSaJ9vauIFYUvpz1lo4w"
                 spreadsheet = client.open_by_key(SPREADSHEET_ID)
                 sheet = spreadsheet.worksheet("Matriz de Pedidos")
                 
-                # Actualizar celdas de encabezado
                 sheet.update_acell('C2', str(mercado))
                 sheet.update_acell('C3', str(fecha_pedido))
                 
-                # 2. Actualización por lotes (Batch Update) de los 45 productos (B6:F50)
                 values_to_update = []
                 for index, row in edited_df.iterrows():
                     values_to_update.append([
@@ -216,7 +212,6 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
                 else:
                     st.error(f"Error al conectar con Google Sheets: {str(e)}")
 
-            # 3. Generar archivos (PDF y CSV), preparar WhatsApp y auto-guardar en GitHub
             vend_clean = vendedor.strip().replace(" ", "_") if vendedor else "SinVendedor"
             merc_clean = mercado.strip().replace(" ", "_")
             timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -226,14 +221,34 @@ if st.button("🚀 Enviar Pedido y Generar Comprobantes", type="primary"):
             pdf_buffer = generar_pdf(edited_df, mercado, fecha_pedido, vendedor)
             csv_bytes = convertir_df_a_csv(edited_df)
             
-            # Subida automática a la carpeta 'pdf_guardados/' en GitHub
             guardar_pdf_en_github(pdf_buffer, nombre_pdf)
             
             texto_wsp = construir_mensaje_whatsapp(mercado, fecha_pedido, vendedor, edited_df)
             whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
             
-            # Renderizado horizontal de 3 botones
             col_b1, col_b2, col_b3 = st.columns(3)
             
             with col_b1:
                 st.download_button(
+                    label="📥 Descargar PDF",
+                    data=pdf_buffer,
+                    file_name=nombre_pdf,
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+                
+            with col_b2:
+                st.download_button(
+                    label="📊 Descargar CSV",
+                    data=csv_bytes,
+                    file_name=nombre_csv,
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                
+            with col_b3:
+                st.link_button(
+                    label="💬 Enviar por WhatsApp",
+                    url=whatsapp_url,
+                    use_container_width=True
+                )
