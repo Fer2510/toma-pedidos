@@ -113,7 +113,7 @@ def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
     elements.append(Paragraph(f"<b>Vendedor:</b> {vendedor_val}", normal_style))
     elements.append(Spacer(1, 15))
     
-           df_filtrado = df_enviado
+    df_filtrado = df_enviado
         
     table_data = [["PRODUCTO", "EXISTENCIA", "CAMBIOS", "PEDIDO", "SUGERIDO"]]
     for _, row in df_filtrado.iterrows():
