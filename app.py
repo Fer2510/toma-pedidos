@@ -68,12 +68,13 @@ for p in productos:
 df_input = pd.DataFrame(data)
 
 edited_df = st.data_editor(
-    df_input,
+df_input,
     num_rows="fixed",
     use_container_width=True,
     hide_index=True,
     height=650,
-    column_order=("PRODUCTO", "EXISTENCIA", "CAMBIOS", "PEDIDO", "SUGERIDO")
+    column_order=("PRODUCTO", "EXISTENCIA", "CAMBIOS", "PEDIDO", "SUGERIDO"),
+    disabled=["PRODUCTO"]  # <--- Esto bloquea la columna de productos para que no se mueva ni se edite su texto
 )
 
 def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
