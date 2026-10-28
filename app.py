@@ -72,7 +72,8 @@ edited_df = st.data_editor(
     num_rows="fixed",
     use_container_width=True,
     hide_index=True,
-    height=650
+    height=650,
+    column_order=("PRODUCTO", "EXISTENCIA", "CAMBIOS", "PEDIDO", "SUGERIDO")
 )
 
 def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
