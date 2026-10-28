@@ -14,6 +14,7 @@ from github import Github
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
 # Estilos CSS para ocultar barras e insignias
+# Estilos CSS para ocultar barras, insignias y BLOQUEAR el movimiento de columnas en la tabla
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -26,6 +27,16 @@ st.markdown("""
     div[class*='viewerBadge'] {display: none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     a[href*="streamlit.io/cloud"] {display: none !important;}
+    
+    /* BLOQUEO DE MOVER COLUMNAS EN LA TABLA DATA_EDITOR */
+    [data-testid="stDataEditor"] canvas {
+        pointer-events: auto;
+    }
+    /* Inhabilita el arrastre en la cabecera del editor */
+    [data-testid="stDataEditor"] div[role="grid"] div[role="columnheader"] {
+        pointer-events: none !important;
+        user-select: none !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
