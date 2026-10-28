@@ -14,7 +14,6 @@ from github import Github
 st.set_page_config(page_title="Toma de Pedidos - Oficina Principal", layout="wide")
 
 # Estilos CSS para ocultar barras e insignias
-# Estilos CSS para ocultar barras, insignias y BLOQUEAR el movimiento de columnas en la tabla
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -27,16 +26,6 @@ st.markdown("""
     div[class*='viewerBadge'] {display: none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     a[href*="streamlit.io/cloud"] {display: none !important;}
-    
-    /* BLOQUEO DE MOVER COLUMNAS EN LA TABLA DATA_EDITOR */
-    [data-testid="stDataEditor"] canvas {
-        pointer-events: auto;
-    }
-    /* Inhabilita el arrastre en la cabecera del editor */
-    [data-testid="stDataEditor"] div[role="grid"] div[role="columnheader"] {
-        pointer-events: none !important;
-        user-select: none !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -78,14 +67,21 @@ for p in productos:
 
 df_input = pd.DataFrame(data)
 
+# Tabla interactiva con columnas bloqueadas mediante column_config
 edited_df = st.data_editor(
-df_input,
+    df_input,
     num_rows="fixed",
     use_container_width=True,
     hide_index=True,
     height=650,
     column_order=("PRODUCTO", "EXISTENCIA", "CAMBIOS", "PEDIDO", "SUGERIDO"),
-    disabled=["PRODUCTO"]  # <--- Esto bloquea la columna de productos para que no se mueva ni se edite su texto
+    column_config={
+        "PRODUCTO": st.column_config.TextColumn("PRODUCTO", disabled=True),
+        "EXISTENCIA": st.column_config.NumberColumn("EXISTENCIA", min_value=0, step=1),
+        "CAMBIOS": st.column_config.NumberColumn("CAMBIOS", min_value=0, step=1),
+        "PEDIDO": st.column_config.NumberColumn("PEDIDO", min_value=0, step=1),
+        "SUGERIDO": st.column_config.NumberColumn("SUGERIDO", min_value=0, step=1),
+    }
 )
 
 def generar_pdf(df_enviado, mercado_val, fecha_val, vendedor_val):
